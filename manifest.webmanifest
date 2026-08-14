@@ -3,7 +3,9 @@
   "short_name": "Display Apps",
   "description": "Launcher for Meta Ray-Ban Display web apps.",
   "icons": [
-    { "src": "favicon.png", "sizes": "128x128", "type": "image/png" }
+    { "src": "icon-96.png", "sizes": "96x96", "type": "image/png" },
+    { "src": "apple-touch-icon.png", "sizes": "180x180", "type": "image/png" },
+    { "src": "favicon.png", "sizes": "192x192", "type": "image/png" }
   ],
   "background_color": "#000000",
   "theme_color": "#000000",

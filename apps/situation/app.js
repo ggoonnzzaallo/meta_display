@@ -18,9 +18,12 @@
     SELECT: "Enter",
   };
 
+  var SWIPE_PX = 56;
   var clockEl = document.getElementById("clock");
   var updatedEl = document.getElementById("updated");
   var terminalEl = document.getElementById("terminal");
+  var detailPosEl = document.getElementById("detail-pos");
+  var detailCardEl = document.getElementById("detail-card");
   var detailMetaEl = document.getElementById("detail-meta");
   var detailHeadlineEl = document.getElementById("detail-headline");
   var detailSummaryEl = document.getElementById("detail-summary");
@@ -46,6 +49,14 @@
     visible: [],
     queue: [],
     seen: {},
+    detailIndex: -1,
+  };
+
+  var swipe = {
+    active: false,
+    x: 0,
+    y: 0,
+    scroll: 0,
   };
 
   function collectScreens() {
@@ -314,13 +325,53 @@
     return null;
   }
 
-  function openDetail(item) {
+  function findItemIndex(id) {
+    var i;
+    for (i = 0; i < state.visible.length; i++) {
+      if (state.visible[i].id === id) return i;
+    }
+    return -1;
+  }
+
+  function renderDetail(item) {
     if (!item) return;
+    state.detailIndex = findItemIndex(item.id);
     fillMeta(detailMetaEl, item);
     detailHeadlineEl.textContent = item.headline || "";
     detailSummaryEl.textContent =
       item.summary || "No additional detail in this feed item.";
+    detailCardEl.className = ("detail-card " + severityClass(item)).trim();
+    detailPosEl.textContent =
+      state.detailIndex >= 0
+        ? state.detailIndex + 1 + " / " + state.visible.length
+        : "1 / 1";
+    detailCardEl.scrollTop = 0;
+  }
+
+  function openDetail(item) {
+    if (!item) return;
+    renderDetail(item);
     navigateTo("detail");
+  }
+
+  function showAdjacent(delta) {
+    if (currentScreen !== "detail" || !state.visible.length) return;
+    var idx = state.detailIndex;
+    if (idx < 0) idx = 0;
+    var next =
+      (idx + delta + state.visible.length) % state.visible.length;
+    renderDetail(state.visible[next]);
+  }
+
+  function goHome() {
+    var id =
+      state.detailIndex >= 0 && state.visible[state.detailIndex]
+        ? state.visible[state.detailIndex].id
+        : null;
+    navigateTo("home");
+    if (!id) return;
+    var row = terminalEl.querySelector('[data-id="' + id + '"]');
+    if (row) row.focus();
   }
 
   function moveFocus(direction) {
@@ -351,7 +402,7 @@
   }
 
   detailBackEl.addEventListener("click", function () {
-    navigateTo("home");
+    goHome();
   });
 
   terminalEl.addEventListener("click", function (event) {
@@ -360,19 +411,71 @@
     openDetail(findItem(row.getAttribute("data-id")));
   });
 
+  detailCardEl.addEventListener("pointerdown", function (event) {
+    swipe.active = true;
+    swipe.x = event.clientX;
+    swipe.y = event.clientY;
+    swipe.scroll = detailCardEl.scrollTop;
+    if (detailCardEl.setPointerCapture) {
+      detailCardEl.setPointerCapture(event.pointerId);
+    }
+  });
+
+  detailCardEl.addEventListener("pointermove", function (event) {
+    if (!swipe.active) return;
+    var dy = event.clientY - swipe.y;
+    var dx = event.clientX - swipe.x;
+    if (Math.abs(dy) >= Math.abs(dx)) {
+      detailCardEl.scrollTop = swipe.scroll - dy;
+    }
+  });
+
+  function endSwipe(event) {
+    if (!swipe.active) return;
+    swipe.active = false;
+    var dx = event.clientX - swipe.x;
+    var dy = event.clientY - swipe.y;
+    if (Math.abs(dx) < SWIPE_PX || Math.abs(dx) <= Math.abs(dy)) return;
+    showAdjacent(dx < 0 ? 1 : -1);
+  }
+
+  detailCardEl.addEventListener("pointerup", endSwipe);
+  detailCardEl.addEventListener("pointercancel", endSwipe);
+
   document.addEventListener("keydown", function (event) {
+    if (event.key === "Escape" && currentScreen === "detail") {
+      goHome();
+      event.preventDefault();
+      return;
+    }
     switch (event.key) {
       case DPAD.UP:
-        moveFocus("up");
+        if (currentScreen === "detail") {
+          showAdjacent(-1);
+        } else {
+          moveFocus("up");
+        }
         break;
       case DPAD.DOWN:
-        moveFocus("down");
+        if (currentScreen === "detail") {
+          showAdjacent(1);
+        } else {
+          moveFocus("down");
+        }
         break;
       case DPAD.LEFT:
-        moveFocus("left");
+        if (currentScreen === "detail") {
+          showAdjacent(-1);
+        } else {
+          moveFocus("left");
+        }
         break;
       case DPAD.RIGHT:
-        moveFocus("right");
+        if (currentScreen === "detail") {
+          showAdjacent(1);
+        } else {
+          moveFocus("right");
+        }
         break;
       case DPAD.SELECT:
         if (document.activeElement && document.activeElement.classList.contains("focusable")) {
