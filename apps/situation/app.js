@@ -6,8 +6,8 @@
   var POLL_MS = 20000;
   var STORAGE = {
     seen: "situation_seen_ids",
-    paused: "situation_paused",
     lines: "situation_last_lines",
+    updated: "situation_updated_at",
   };
 
   var DPAD = {
@@ -18,10 +18,9 @@
     SELECT: "Enter",
   };
 
-  var statusEl = document.getElementById("status");
   var clockEl = document.getElementById("clock");
+  var updatedEl = document.getElementById("updated");
   var terminalEl = document.getElementById("terminal");
-  var toggleEl = document.getElementById("toggle");
   var detailMetaEl = document.getElementById("detail-meta");
   var detailHeadlineEl = document.getElementById("detail-headline");
   var detailSummaryEl = document.getElementById("detail-summary");
@@ -42,8 +41,8 @@
   });
 
   var state = {
-    paused: false,
     signalError: false,
+    updatedAt: null,
     visible: [],
     queue: [],
     seen: {},
@@ -164,29 +163,34 @@
   function persist() {
     saveJson(STORAGE.lines, state.visible);
     saveJson(STORAGE.seen, Object.keys(state.seen).slice(-500));
-    localStorage.setItem(STORAGE.paused, state.paused ? "1" : "0");
+    if (state.updatedAt) {
+      localStorage.setItem(STORAGE.updated, state.updatedAt.toISOString());
+    }
   }
 
-  function setPaused(paused) {
-    state.paused = paused;
-    toggleEl.textContent = paused ? "Resume" : "Pause";
-    updateStatus();
-    persist();
+  function formatUpdated(date) {
+    var mins = Math.max(0, Math.round((Date.now() - date.getTime()) / 60000));
+    var when = timeFmt.format(date);
+    if (mins < 1) return "Updated " + when + " · just now";
+    if (mins < 60) return "Updated " + when + " · " + mins + "m ago";
+    var hours = Math.floor(mins / 60);
+    if (hours < 24) return "Updated " + when + " · " + hours + "h ago";
+    return "Updated " + when;
   }
 
-  function updateStatus() {
-    statusEl.classList.remove("is-paused", "is-error");
+  function updateChrome() {
+    clockEl.textContent = formatClock(new Date());
+    updatedEl.classList.remove("is-error");
     if (state.signalError) {
-      statusEl.textContent = "NO SIGNAL";
-      statusEl.classList.add("is-error");
+      updatedEl.textContent = "NO SIGNAL";
+      updatedEl.classList.add("is-error");
       return;
     }
-    if (state.paused) {
-      statusEl.textContent = "PAUSED";
-      statusEl.classList.add("is-paused");
+    if (state.updatedAt) {
+      updatedEl.textContent = formatUpdated(state.updatedAt);
       return;
     }
-    statusEl.textContent = "LIVE";
+    updatedEl.textContent = "Updated --";
   }
 
   function markSeen(id) {
@@ -211,6 +215,7 @@
     rememberAll(items);
     renderRows({ stickToTop: true });
     persist();
+    if (currentScreen === "home") focusFirst(screens.home);
   }
 
   function enqueueNew(items) {
@@ -227,7 +232,7 @@
 
   function tick() {
     if (currentScreen !== "home") return;
-    if (state.paused || !state.queue.length) return;
+    if (!state.queue.length) return;
     var next = state.queue.shift();
     state.visible.unshift(next);
     if (state.visible.length > MAX_ROWS) {
@@ -239,8 +244,11 @@
 
   function ingest(feed) {
     var items = Array.isArray(feed && feed.items) ? feed.items : [];
+    var stamp = feed && feed.updated_at ? parseTs(feed.updated_at) : new Date();
+    state.updatedAt = stamp;
     state.signalError = items.length === 0;
-    updateStatus();
+    persist();
+    updateChrome();
     if (!items.length) return;
     if (!state.visible.length || state.visible.length < 8) {
       applyFirstPaint(items);
@@ -260,7 +268,7 @@
       })
       .catch(function () {
         state.signalError = true;
-        updateStatus();
+        updateChrome();
       });
   }
 
@@ -278,7 +286,9 @@
       state.visible = newestFirst(lines).slice(0, MAX_ROWS);
       renderRows({ stickToTop: true });
     }
-    setPaused(localStorage.getItem(STORAGE.paused) === "1");
+    var savedUpdated = localStorage.getItem(STORAGE.updated);
+    if (savedUpdated) state.updatedAt = parseTs(savedUpdated);
+    updateChrome();
   }
 
   function focusFirst(container) {
@@ -340,10 +350,6 @@
     focusables[next].scrollIntoView({ block: "nearest" });
   }
 
-  toggleEl.addEventListener("click", function () {
-    setPaused(!state.paused);
-  });
-
   detailBackEl.addEventListener("click", function () {
     navigateTo("home");
   });
@@ -381,13 +387,9 @@
 
   collectScreens();
   restore();
-  updateStatus();
-  toggleEl.focus();
+  focusFirst(screens.home);
   fetchFeed();
   setInterval(tick, TICK_MS);
   setInterval(fetchFeed, POLL_MS);
-  setInterval(function () {
-    clockEl.textContent = formatClock(new Date());
-  }, 1000);
-  clockEl.textContent = formatClock(new Date());
+  setInterval(updateChrome, 1000);
 })();

@@ -45,41 +45,58 @@ body {
 
 .header {
   display: flex;
-  align-items: center;
-  height: 64px;
-  padding: 0 16px;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 88px;
+  padding: 10px 16px;
   background: var(--bg-surface);
   border-radius: 12px;
   flex-shrink: 0;
-  gap: 12px;
+  gap: 4px;
 }
 
 .header h1 {
-  font-size: 28px;
+  font-size: 24px;
   font-weight: 700;
-  flex: 1;
+  line-height: 1.15;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
 }
 
 .screen.hidden {
   display: none;
 }
 
-.header-meta,
-.header-status {
+.header-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   font-size: 20px;
   font-weight: 600;
   color: var(--text-secondary);
   white-space: nowrap;
 }
 
-.header-meta {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+#clock {
+  flex-shrink: 0;
 }
 
-.header-status.is-paused,
-.header-status.is-error {
+#updated {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  justify-content: flex-end;
+}
+
+.header-meta.is-error {
   color: var(--sev-4);
 }
 
