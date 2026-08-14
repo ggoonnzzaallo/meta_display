@@ -58,7 +58,7 @@ From the [setup guide](https://wearables.developer.meta.com/docs/develop/webapps
 ```text
 index.html        600×600 launcher (lists apps)
 apps/situation/   live headline terminal (MTS + RSS via feed.json)
-apps/markets/     stock movers, headlines, earnings (Yahoo + RSS)
+apps/markets/     movers, earnings, headlines (Yahoo quotes + Nasdaq + WSJ/CNBC/SA)
 apps/starter/     smoke-test Web App
 scripts/fetch_feed.py     builds apps/situation/feed.json for Pages
 scripts/fetch_markets.py  builds apps/markets/feed.json for Pages

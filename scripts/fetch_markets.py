@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
-"""Build a Finviz-style markets snapshot for the glasses terminal."""
+"""Build a Markets terminal feed: big movers, earnings, and wire headlines.
+
+Quotes use Yahoo Finance screeners/charts (not RSS). Headlines come from WSJ,
+CNBC, Seeking Alpha, and BBC. Earnings prefer Nasdaq's calendar, with CNBC/SA
+RSS as fallback. Do not scrape Finviz. Do not call these hosts from the glasses.
+"""
 
 from __future__ import annotations
 
@@ -19,16 +24,24 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
-USER_AGENT = (
-    "Mozilla/5.0 (compatible; meta-display-markets/1.0; "
+YAHOO_UA = (
+    "Mozilla/5.0 (compatible; meta-display-markets/1.2; "
     "+https://github.com/ggoonnzzaallo/meta_display)"
 )
+BROWSER_UA = (
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+    "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
+)
 TIMEOUT_S = 20
-MAX_ITEMS = 50
+NASDAQ_TIMEOUT_S = 25
+MAX_ITEMS = 55
+MIN_PRICE = 5.0
+MIN_VOLUME = 250_000
+MIN_MARKET_CAP = 1_000_000_000
 
 SCREENERS = [
-    ("day_gainers", "up", "UP", 6),
-    ("day_losers", "down", "DN", 6),
+    ("day_gainers", "up", "UP", 5),
+    ("day_losers", "down", "DN", 5),
     ("most_actives", "vol", "VOL", 4),
 ]
 
@@ -39,10 +52,15 @@ INDEX_CHARTS = [
 ]
 
 NEWS_FEEDS = [
-    ("CNBC", "https://www.cnbc.com/id/10001147/device/rss/rss.html"),
+    ("WSJ", "https://feeds.a.dj.com/rss/RSSMarketsMain.xml"),
     ("CNBC", "https://www.cnbc.com/id/100003114/device/rss/rss.html"),
-    ("YF", "https://finance.yahoo.com/news/rssindex"),
+    ("SA", "https://seekingalpha.com/market_currents.xml"),
     ("BBC", "https://feeds.bbci.co.uk/news/business/rss.xml"),
+]
+
+EARNINGS_NEWS_FEEDS = [
+    ("CNBC", "https://www.cnbc.com/id/15839135/device/rss/rss.html"),
+    ("SA", "https://seekingalpha.com/tag/earnings.xml"),
 ]
 
 
@@ -54,20 +72,21 @@ def to_iso(dt: datetime) -> str:
     return dt.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
-def fetch_bytes(url: str) -> bytes:
+def fetch_bytes(url: str, ua: str = YAHOO_UA, timeout: int = TIMEOUT_S) -> bytes:
     req = Request(
         url,
         headers={
-            "User-Agent": USER_AGENT,
+            "User-Agent": ua,
             "Accept": "application/json, application/xml, text/xml, */*",
+            "Accept-Language": "en-US,en;q=0.9",
         },
     )
-    with urlopen(req, timeout=TIMEOUT_S) as resp:
+    with urlopen(req, timeout=timeout) as resp:
         return resp.read()
 
 
-def fetch_json(url: str) -> Any:
-    return json.loads(fetch_bytes(url).decode("utf-8"))
+def fetch_json(url: str, ua: str = YAHOO_UA, timeout: int = TIMEOUT_S) -> Any:
+    return json.loads(fetch_bytes(url, ua=ua, timeout=timeout).decode("utf-8"))
 
 
 def strip_html(text: str) -> str:
@@ -88,7 +107,7 @@ def raw_num(value: Any) -> float | None:
     if value is None or value == "":
         return None
     try:
-        return float(str(value).replace(",", "").replace("%", ""))
+        return float(str(value).replace(",", "").replace("%", "").replace("$", ""))
     except ValueError:
         return None
 
@@ -122,19 +141,48 @@ def fmt_vol(vol: float | None) -> str:
     return f"{vol:.0f}"
 
 
+def fmt_cap(cap: float | None) -> str:
+    if cap is None:
+        return ""
+    if cap >= 1_000_000_000_000:
+        return f"{cap / 1_000_000_000_000:.1f}T"
+    if cap >= 1_000_000_000:
+        return f"{cap / 1_000_000_000:.1f}B"
+    if cap >= 1_000_000:
+        return f"{cap / 1_000_000:.1f}M"
+    return f"{cap:.0f}"
+
+
 def parse_time(value: str | None) -> datetime | None:
     if not value:
         return None
-    raw = value.strip()
     try:
-        return parsedate_to_datetime(raw)
+        return parsedate_to_datetime(value.strip())
     except (TypeError, ValueError, IndexError):
-        pass
-    return None
+        return None
 
 
 def local_tag(name: str) -> str:
     return name.rsplit("}", 1)[-1] if "}" in name else name
+
+
+def text_of(el: ET.Element | None) -> str:
+    if el is None or el.text is None:
+        return ""
+    return el.text.strip()
+
+
+def is_liquid(quote: dict[str, Any]) -> bool:
+    price = raw_num(quote.get("regularMarketPrice"))
+    vol = raw_num(quote.get("regularMarketVolume"))
+    cap = raw_num(quote.get("marketCap"))
+    if price is not None and price < MIN_PRICE:
+        return False
+    if vol is not None and vol < MIN_VOLUME:
+        return False
+    if cap is not None and cap < MIN_MARKET_CAP:
+        return False
+    return True
 
 
 def fetch_indices() -> list[dict[str, Any]]:
@@ -166,7 +214,7 @@ def fetch_indices() -> list[dict[str, Any]]:
             )
         except (HTTPError, URLError, TimeoutError, KeyError, IndexError, TypeError, OSError) as exc:
             print(f"index skip {label}: {exc}", file=sys.stderr)
-        time.sleep(0.4)
+        time.sleep(0.5)
     return items
 
 
@@ -177,7 +225,7 @@ def fetch_screener(scr_id: str, kind: str, tag: str, count: int) -> list[dict[st
             "lang": "en-US",
             "region": "US",
             "scrIds": scr_id,
-            "count": str(count),
+            "count": "20",
         }
     )
     url = f"https://query1.finance.yahoo.com/v1/finance/screener/predefined/saved?{qs}"
@@ -185,7 +233,9 @@ def fetch_screener(scr_id: str, kind: str, tag: str, count: int) -> list[dict[st
     quotes = payload["finance"]["result"][0]["quotes"]
     now = to_iso(utc_now())
     items: list[dict[str, Any]] = []
-    for quote in quotes[:count]:
+    for quote in quotes:
+        if not is_liquid(quote):
+            continue
         symbol = str(quote.get("symbol") or "")
         if not symbol:
             continue
@@ -193,6 +243,7 @@ def fetch_screener(scr_id: str, kind: str, tag: str, count: int) -> list[dict[st
         last = raw_num(quote.get("regularMarketPrice"))
         pct = raw_num(quote.get("regularMarketChangePercent"))
         vol = raw_num(quote.get("regularMarketVolume"))
+        cap = raw_num(quote.get("marketCap"))
         items.append(
             {
                 "id": f"{kind}:{symbol}",
@@ -201,52 +252,75 @@ def fetch_screener(scr_id: str, kind: str, tag: str, count: int) -> list[dict[st
                 "category": tag,
                 "symbol": symbol,
                 "source": "YF",
-                "headline": f"{symbol}  {fmt_pct(pct)}",
-                "summary": f"{name}. Last {fmt_price(last)}. Volume {fmt_vol(vol) or 'n/a'}. {tag}.",
+                "headline": f"{symbol}  {fmt_pct(pct)}  {fmt_price(last)}",
+                "summary": (
+                    f"{name}. Last {fmt_price(last)}. Volume {fmt_vol(vol) or 'n/a'}. "
+                    f"Mkt cap {fmt_cap(cap) or 'n/a'}."
+                ),
                 "change_pct": pct,
                 "last": last,
             }
         )
+        if len(items) >= count:
+            break
     return items
 
 
-def fetch_earnings() -> list[dict[str, Any]]:
+def session_label(raw: str) -> str:
+    text = (raw or "").strip().lower().replace("_", "-")
+    if "pre" in text:
+        return "BMO"
+    if "after" in text or "post" in text:
+        return "AMC"
+    if "not-supplied" in text or not text:
+        return ""
+    return raw.strip()
+
+
+def fetch_nasdaq_earnings() -> list[dict[str, Any]]:
     today = utc_now().strftime("%Y-%m-%d")
     url = f"https://api.nasdaq.com/api/calendar/earnings?date={today}"
-    payload = fetch_json(url)
+    payload = fetch_json(url, ua=BROWSER_UA, timeout=NASDAQ_TIMEOUT_S)
     rows = (
         payload.get("data", {}).get("rows")
         or payload.get("data", {}).get("earnings", {}).get("rows")
         or []
     )
     now = to_iso(utc_now())
-    items: list[dict[str, Any]] = []
-    for row in rows[:8]:
-        symbol = str(row.get("symbol") or row.get("ticker") or "").strip()
-        if not symbol:
+    timed: list[dict[str, Any]] = []
+    rest: list[dict[str, Any]] = []
+    for row in rows[:40]:
+        symbol = str(row.get("symbol") or row.get("ticker") or "").strip().upper()
+        if not symbol or len(symbol) > 6:
             continue
+        timing = session_label(str(row.get("time") or row.get("timeOfDay") or ""))
         name = strip_html(str(row.get("name") or symbol))
-        timing = str(row.get("time") or row.get("timeOfDay") or "").strip()
         eps = str(row.get("epsForecast") or row.get("consensusEPS") or "").strip()
-        headline = f"{symbol}  earnings {timing}".strip()
-        items.append(
-            {
-                "id": f"earn:{today}:{symbol}",
-                "ts": now,
-                "kind": "earn",
-                "category": "ERN",
-                "symbol": symbol,
-                "source": "NDQ",
-                "headline": headline,
-                "summary": f"{name} reports today {timing or 'unspecified session'}. Consensus EPS {eps or 'n/a'}.",
-                "change_pct": None,
-                "last": None,
-            }
-        )
-    return items
+        headline = f"{symbol}  earnings" + (f"  {timing}" if timing else "")
+        item = {
+            "id": f"earn:{today}:{symbol}",
+            "ts": now,
+            "kind": "earn",
+            "category": "ERN",
+            "symbol": symbol,
+            "source": "NDQ",
+            "headline": headline,
+            "summary": (
+                f"{name} reports today"
+                + (f" {timing}" if timing else "")
+                + f". Consensus EPS {eps or 'n/a'}."
+            ),
+            "change_pct": None,
+            "last": None,
+        }
+        if timing in ("BMO", "AMC"):
+            timed.append(item)
+        else:
+            rest.append(item)
+    return (timed + rest)[:6]
 
 
-def parse_rss(xml_bytes: bytes, source: str) -> list[dict[str, Any]]:
+def parse_rss(xml_bytes: bytes, source: str, kind: str, category: str) -> list[dict[str, Any]]:
     root = ET.fromstring(xml_bytes)
     items: list[dict[str, Any]] = []
     for node in root.iter():
@@ -274,10 +348,10 @@ def parse_rss(xml_bytes: bytes, source: str) -> list[dict[str, Any]]:
             continue
         items.append(
             {
-                "id": item_id("news", source, link or title),
+                "id": item_id(kind, source, link or title),
                 "ts": to_iso(ts or utc_now()),
-                "kind": "news",
-                "category": "NEWS",
+                "kind": kind,
+                "category": category,
                 "symbol": "",
                 "source": source,
                 "headline": title,
@@ -290,67 +364,79 @@ def parse_rss(xml_bytes: bytes, source: str) -> list[dict[str, Any]]:
     return items
 
 
-def text_of(el: ET.Element | None) -> str:
-    if el is None or el.text is None:
-        return ""
-    return el.text.strip()
-
-
-def fetch_news() -> list[dict[str, Any]]:
+def fetch_rss_block(
+    feeds: list[tuple[str, str]], kind: str, category: str, limit: int
+) -> list[dict[str, Any]]:
     items: list[dict[str, Any]] = []
     seen: set[str] = set()
-    for source, url in NEWS_FEEDS:
+    for source, url in feeds:
         try:
-            batch = parse_rss(fetch_bytes(url), source)
+            batch = parse_rss(fetch_bytes(url, ua=BROWSER_UA), source, kind, category)
         except (HTTPError, URLError, TimeoutError, ET.ParseError, OSError) as exc:
-            print(f"news skip {source}: {exc}", file=sys.stderr)
+            print(f"{kind} skip {source}: {exc}", file=sys.stderr)
             continue
+        added = 0
         for item in batch:
             key = item["headline"].lower()
             if key in seen:
                 continue
             seen.add(key)
             items.append(item)
-        time.sleep(0.3)
+            added += 1
+            if added >= 5:
+                break
+        time.sleep(0.35)
     items.sort(key=lambda row: row["ts"], reverse=True)
-    return items[:18]
+    return items[:limit]
+
+
+def fetch_earnings() -> list[dict[str, Any]]:
+    stories = fetch_rss_block(EARNINGS_NEWS_FEEDS, "earn", "ERN", 10)
+    print(f"earnings headlines: {len(stories)}", file=sys.stderr)
+    calendar: list[dict[str, Any]] = []
+    try:
+        calendar = fetch_nasdaq_earnings()
+        print(f"nasdaq earnings: {len(calendar)}", file=sys.stderr)
+    except (HTTPError, URLError, TimeoutError, KeyError, TypeError, OSError) as exc:
+        print(f"nasdaq earnings skip: {exc}", file=sys.stderr)
+    return merge_unique([stories, calendar])[:12]
+
+
+def merge_unique(blocks: list[list[dict[str, Any]]]) -> list[dict[str, Any]]:
+    items: list[dict[str, Any]] = []
+    seen_ids: set[str] = set()
+    seen_titles: set[str] = set()
+    for block in blocks:
+        for item in block:
+            title_key = str(item.get("headline") or "").lower()
+            if item["id"] in seen_ids or (title_key and title_key in seen_titles):
+                continue
+            seen_ids.add(item["id"])
+            if title_key:
+                seen_titles.add(title_key)
+            items.append(item)
+    return items
 
 
 def build_feed() -> dict[str, Any]:
-    blocks: list[list[dict[str, Any]]] = []
-
     indices = fetch_indices()
     print(f"indices: {len(indices)}", file=sys.stderr)
-    blocks.append(indices)
 
+    movers: list[list[dict[str, Any]]] = []
     for scr_id, kind, tag, count in SCREENERS:
         try:
             rows = fetch_screener(scr_id, kind, tag, count)
             print(f"{scr_id}: {len(rows)}", file=sys.stderr)
-            blocks.append(rows)
+            movers.append(rows)
         except (HTTPError, URLError, TimeoutError, KeyError, IndexError, OSError) as exc:
             print(f"screener skip {scr_id}: {exc}", file=sys.stderr)
-        time.sleep(0.5)
+        time.sleep(0.6)
 
-    try:
-        earnings = fetch_earnings()
-        print(f"earnings: {len(earnings)}", file=sys.stderr)
-        blocks.append(earnings)
-    except (HTTPError, URLError, TimeoutError, KeyError, TypeError, OSError) as exc:
-        print(f"earnings skip: {exc}", file=sys.stderr)
+    earnings = fetch_earnings()
+    headlines = fetch_rss_block(NEWS_FEEDS, "news", "NEWS", 18)
+    print(f"headlines: {len(headlines)}", file=sys.stderr)
 
-    news = fetch_news()
-    print(f"news: {len(news)}", file=sys.stderr)
-    blocks.append(news)
-
-    items: list[dict[str, Any]] = []
-    seen_ids: set[str] = set()
-    for block in blocks:
-        for item in block:
-            if item["id"] in seen_ids:
-                continue
-            seen_ids.add(item["id"])
-            items.append(item)
+    items = merge_unique([indices, *movers, earnings, headlines])
     return {"updated_at": to_iso(utc_now()), "items": items[:MAX_ITEMS]}
 
 

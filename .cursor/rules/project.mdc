@@ -28,6 +28,8 @@ If a plugin skill conflicts with those pages, follow the official docs.
 - Glasses load **HTTPS only**. Host on **GitHub Pages**, not Vercel. Localhost is for desktop smoke tests only
 - Public URLs: `https://ggoonnzzaallo.github.io/meta_display/` (launcher) and `.../apps/<name>/` (keep the trailing slash)
 - Default stack: vanilla HTML/CSS/JS in `apps/<name>/`. Register each new app in root `app.js` `APPS`. Do not add React/Vue unless the user asks
+- Situation ingest: `scripts/fetch_feed.py` writes `apps/situation/feed.json` in the Pages job. Do not fetch third-party RSS from the glasses Web App.
+- Markets ingest: `scripts/fetch_markets.py` writes `apps/markets/feed.json` (Yahoo quotes for movers, Nasdaq earnings, WSJ/CNBC/SA/BBC headlines). Do not scrape Finviz.
 
 ## Not supported yet (official build guide)
 

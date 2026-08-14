@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=600, height=600, initial-scale=1.0, user-scalable=no">
-  <meta name="description" content="Stock market movers, headlines, and earnings for Meta Ray-Ban Display glasses.">
+  <meta name="description" content="Big movers, earnings, and market headlines for Meta Ray-Ban Display glasses.">
   <meta name="mrbd-web-app-capable" content="yes">
-  <title>Markets</title>
+  <title>Monitoring Markets</title>
   <link rel="icon" href="icon-96.png" sizes="96x96" type="image/png">
   <link rel="icon" href="favicon.png" sizes="192x192" type="image/png">
   <link rel="apple-touch-icon" href="apple-touch-icon.png" sizes="180x180">
@@ -14,26 +14,27 @@
 </head>
 <body>
   <div id="app">
-    <section id="home" class="screen" aria-label="Markets terminal">
+    <section id="home" class="screen" aria-label="Monitoring Markets">
       <header class="header">
-        <h1>MARKETS</h1>
-        <span id="clock" class="header-meta">--:--</span>
-        <span id="status" class="header-status">LIVE</span>
+        <h1>Monitoring Markets</h1>
+        <div class="header-row">
+          <span id="clock" class="header-meta">--:--</span>
+          <span id="updated" class="header-meta">Updated --</span>
+        </div>
       </header>
       <div id="terminal" class="terminal" aria-live="polite"></div>
-      <button id="toggle" class="focusable" type="button">Pause</button>
     </section>
 
     <section id="detail" class="screen hidden" aria-label="Market detail">
-      <header class="header">
-        <h1>DETAIL</h1>
-        <span id="detail-meta" class="header-meta"></span>
+      <header class="header header-compact">
+        <h1 id="detail-pos">1 / 1</h1>
       </header>
-      <div class="detail-body">
+      <div id="detail-card" class="detail-card">
+        <div id="detail-meta" class="row-meta"></div>
         <p id="detail-headline" class="detail-headline"></p>
         <p id="detail-summary" class="detail-summary"></p>
       </div>
-      <button id="detail-back" class="focusable" type="button">Back</button>
+      <button id="detail-back" class="focusable" type="button" data-action="home">Back</button>
     </section>
   </div>
   <script src="app.js"></script>

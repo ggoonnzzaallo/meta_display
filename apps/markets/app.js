@@ -4,10 +4,11 @@
   var MAX_ROWS = 40;
   var TICK_MS = 1200;
   var POLL_MS = 20000;
+  var PINNED = { idx: true, up: true, down: true, vol: true, earn: true };
   var STORAGE = {
     seen: "markets_seen_ids",
-    paused: "markets_paused",
     lines: "markets_last_lines",
+    updated: "markets_updated_at",
   };
 
   var DPAD = {
@@ -27,10 +28,12 @@
     earn: "ERN",
   };
 
-  var statusEl = document.getElementById("status");
+  var SWIPE_PX = 56;
   var clockEl = document.getElementById("clock");
+  var updatedEl = document.getElementById("updated");
   var terminalEl = document.getElementById("terminal");
-  var toggleEl = document.getElementById("toggle");
+  var detailPosEl = document.getElementById("detail-pos");
+  var detailCardEl = document.getElementById("detail-card");
   var detailMetaEl = document.getElementById("detail-meta");
   var detailHeadlineEl = document.getElementById("detail-headline");
   var detailSummaryEl = document.getElementById("detail-summary");
@@ -51,11 +54,19 @@
   });
 
   var state = {
-    paused: false,
     signalError: false,
+    updatedAt: null,
     visible: [],
     queue: [],
     seen: {},
+    detailIndex: -1,
+  };
+
+  var swipe = {
+    active: false,
+    x: 0,
+    y: 0,
+    scroll: 0,
   };
 
   function collectScreens() {
@@ -98,6 +109,10 @@
     return item.kind || "news";
   }
 
+  function isPinned(item) {
+    return !!PINNED[kindOf(item)];
+  }
+
   function fillMeta(container, item) {
     container.textContent = "";
     var time = document.createElement("span");
@@ -113,10 +128,8 @@
     container.appendChild(rest);
   }
 
-  function isNearBottom() {
-    var remaining =
-      terminalEl.scrollHeight - terminalEl.scrollTop - terminalEl.clientHeight;
-    return remaining < 48;
+  function isNearTop() {
+    return terminalEl.scrollTop < 48;
   }
 
   function renderRows(opts) {
@@ -125,8 +138,6 @@
       document.activeElement && document.activeElement.getAttribute
         ? document.activeElement.getAttribute("data-id")
         : null;
-    var pinBottom = opts.stickToBottom || isNearBottom();
-    var pinTop = opts.stickToTop;
 
     terminalEl.innerHTML = "";
     state.visible.forEach(function (item) {
@@ -145,10 +156,8 @@
       terminalEl.appendChild(row);
     });
 
-    if (pinTop) {
+    if (opts.stickToTop || isNearTop()) {
       terminalEl.scrollTop = 0;
-    } else if (pinBottom) {
-      terminalEl.scrollTop = terminalEl.scrollHeight;
     }
     if (keepId && currentScreen === "home") {
       var keepEl = terminalEl.querySelector('[data-id="' + keepId + '"]');
@@ -159,29 +168,34 @@
   function persist() {
     saveJson(STORAGE.lines, state.visible);
     saveJson(STORAGE.seen, Object.keys(state.seen).slice(-500));
-    localStorage.setItem(STORAGE.paused, state.paused ? "1" : "0");
+    if (state.updatedAt) {
+      localStorage.setItem(STORAGE.updated, state.updatedAt.toISOString());
+    }
   }
 
-  function setPaused(paused) {
-    state.paused = paused;
-    toggleEl.textContent = paused ? "Resume" : "Pause";
-    updateStatus();
-    persist();
+  function formatUpdated(date) {
+    var mins = Math.max(0, Math.round((Date.now() - date.getTime()) / 60000));
+    var when = timeFmt.format(date);
+    if (mins < 1) return "Updated " + when + " · just now";
+    if (mins < 60) return "Updated " + when + " · " + mins + "m ago";
+    var hours = Math.floor(mins / 60);
+    if (hours < 24) return "Updated " + when + " · " + hours + "h ago";
+    return "Updated " + when;
   }
 
-  function updateStatus() {
-    statusEl.classList.remove("is-paused", "is-error");
+  function updateChrome() {
+    clockEl.textContent = formatClock(new Date());
+    updatedEl.classList.remove("is-error");
     if (state.signalError) {
-      statusEl.textContent = "NO SIGNAL";
-      statusEl.classList.add("is-error");
+      updatedEl.textContent = "NO SIGNAL";
+      updatedEl.classList.add("is-error");
       return;
     }
-    if (state.paused) {
-      statusEl.textContent = "PAUSED";
-      statusEl.classList.add("is-paused");
+    if (state.updatedAt) {
+      updatedEl.textContent = formatUpdated(state.updatedAt);
       return;
     }
-    statusEl.textContent = "LIVE";
+    updatedEl.textContent = "Updated --";
   }
 
   function markSeen(id) {
@@ -195,42 +209,86 @@
     });
   }
 
+  function newestFirst(items) {
+    return items.slice().sort(function (a, b) {
+      return parseTs(b.ts).getTime() - parseTs(a.ts).getTime();
+    });
+  }
+
+  function pinCount() {
+    var n = 0;
+    while (n < state.visible.length && isPinned(state.visible[n])) n++;
+    return n;
+  }
+
+  function trimVisible() {
+    while (state.visible.length > MAX_ROWS) {
+      var i;
+      for (i = state.visible.length - 1; i >= 0; i--) {
+        if (!isPinned(state.visible[i])) {
+          state.visible.splice(i, 1);
+          break;
+        }
+      }
+      if (i < 0) break;
+    }
+  }
+
   function applyFirstPaint(items) {
     state.visible = items.slice(0, MAX_ROWS);
     rememberAll(items);
     renderRows({ stickToTop: true });
     persist();
+    if (currentScreen === "home") focusFirst(screens.home);
+  }
+
+  function replaceSnapshot(items) {
+    var snapshot = items.filter(isPinned);
+    var news = state.visible.filter(function (item) {
+      return !isPinned(item);
+    });
+    state.visible = snapshot.concat(news);
+    trimVisible();
+    rememberAll(snapshot);
+    renderRows({ stickToTop: isNearTop() });
+    persist();
   }
 
   function enqueueNew(items) {
-    items.forEach(function (item) {
-      if (!item.id || state.seen[item.id]) return;
-      state.queue.push(item);
-      markSeen(item.id);
-    });
+    newestFirst(items.filter(function (item) { return !isPinned(item); }))
+      .filter(function (item) {
+        return item.id && !state.seen[item.id];
+      })
+      .reverse()
+      .forEach(function (item) {
+        state.queue.push(item);
+        markSeen(item.id);
+      });
   }
 
   function tick() {
     if (currentScreen !== "home") return;
-    if (state.paused || !state.queue.length) return;
+    if (!state.queue.length) return;
     var next = state.queue.shift();
-    state.visible.push(next);
-    if (state.visible.length > MAX_ROWS) {
-      state.visible.shift();
-    }
-    renderRows({ stickToBottom: isNearBottom() });
+    state.visible.splice(pinCount(), 0, next);
+    trimVisible();
+    renderRows({ stickToTop: isNearTop() });
     persist();
   }
 
   function ingest(feed) {
     var items = Array.isArray(feed && feed.items) ? feed.items : [];
+    var stamp = feed && feed.updated_at ? parseTs(feed.updated_at) : new Date();
+    state.updatedAt = stamp;
     state.signalError = items.length === 0;
-    updateStatus();
+    persist();
+    updateChrome();
     if (!items.length) return;
     if (!state.visible.length || state.visible.length < 8) {
       applyFirstPaint(items);
       return;
     }
+    replaceSnapshot(items);
     enqueueNew(items);
   }
 
@@ -245,7 +303,7 @@
       })
       .catch(function () {
         state.signalError = true;
-        updateStatus();
+        updateChrome();
       });
   }
 
@@ -263,7 +321,9 @@
       state.visible = lines.slice(0, MAX_ROWS);
       renderRows({ stickToTop: true });
     }
-    setPaused(localStorage.getItem(STORAGE.paused) === "1");
+    var savedUpdated = localStorage.getItem(STORAGE.updated);
+    if (savedUpdated) state.updatedAt = parseTs(savedUpdated);
+    updateChrome();
   }
 
   function focusFirst(container) {
@@ -289,13 +349,52 @@
     return null;
   }
 
-  function openDetail(item) {
+  function findItemIndex(id) {
+    var i;
+    for (i = 0; i < state.visible.length; i++) {
+      if (state.visible[i].id === id) return i;
+    }
+    return -1;
+  }
+
+  function renderDetail(item) {
     if (!item) return;
+    state.detailIndex = findItemIndex(item.id);
     fillMeta(detailMetaEl, item);
     detailHeadlineEl.textContent = item.headline || "";
     detailSummaryEl.textContent =
       item.summary || "No additional detail in this feed item.";
+    detailCardEl.className = ("detail-card " + kindOf(item)).trim();
+    detailPosEl.textContent =
+      state.detailIndex >= 0
+        ? state.detailIndex + 1 + " / " + state.visible.length
+        : "1 / 1";
+    detailCardEl.scrollTop = 0;
+  }
+
+  function openDetail(item) {
+    if (!item) return;
+    renderDetail(item);
     navigateTo("detail");
+  }
+
+  function showAdjacent(delta) {
+    if (currentScreen !== "detail" || !state.visible.length) return;
+    var idx = state.detailIndex;
+    if (idx < 0) idx = 0;
+    var next = (idx + delta + state.visible.length) % state.visible.length;
+    renderDetail(state.visible[next]);
+  }
+
+  function goHome() {
+    var id =
+      state.detailIndex >= 0 && state.visible[state.detailIndex]
+        ? state.visible[state.detailIndex].id
+        : null;
+    navigateTo("home");
+    if (!id) return;
+    var row = terminalEl.querySelector('[data-id="' + id + '"]');
+    if (row) row.focus();
   }
 
   function moveFocus(direction) {
@@ -325,12 +424,8 @@
     focusables[next].scrollIntoView({ block: "nearest" });
   }
 
-  toggleEl.addEventListener("click", function () {
-    setPaused(!state.paused);
-  });
-
   detailBackEl.addEventListener("click", function () {
-    navigateTo("home");
+    goHome();
   });
 
   terminalEl.addEventListener("click", function (event) {
@@ -339,19 +434,71 @@
     openDetail(findItem(row.getAttribute("data-id")));
   });
 
+  detailCardEl.addEventListener("pointerdown", function (event) {
+    swipe.active = true;
+    swipe.x = event.clientX;
+    swipe.y = event.clientY;
+    swipe.scroll = detailCardEl.scrollTop;
+    if (detailCardEl.setPointerCapture) {
+      detailCardEl.setPointerCapture(event.pointerId);
+    }
+  });
+
+  detailCardEl.addEventListener("pointermove", function (event) {
+    if (!swipe.active) return;
+    var dy = event.clientY - swipe.y;
+    var dx = event.clientX - swipe.x;
+    if (Math.abs(dy) >= Math.abs(dx)) {
+      detailCardEl.scrollTop = swipe.scroll - dy;
+    }
+  });
+
+  function endSwipe(event) {
+    if (!swipe.active) return;
+    swipe.active = false;
+    var dx = event.clientX - swipe.x;
+    var dy = event.clientY - swipe.y;
+    if (Math.abs(dx) < SWIPE_PX || Math.abs(dx) <= Math.abs(dy)) return;
+    showAdjacent(dx < 0 ? 1 : -1);
+  }
+
+  detailCardEl.addEventListener("pointerup", endSwipe);
+  detailCardEl.addEventListener("pointercancel", endSwipe);
+
   document.addEventListener("keydown", function (event) {
+    if (event.key === "Escape" && currentScreen === "detail") {
+      goHome();
+      event.preventDefault();
+      return;
+    }
     switch (event.key) {
       case DPAD.UP:
-        moveFocus("up");
+        if (currentScreen === "detail") {
+          showAdjacent(-1);
+        } else {
+          moveFocus("up");
+        }
         break;
       case DPAD.DOWN:
-        moveFocus("down");
+        if (currentScreen === "detail") {
+          showAdjacent(1);
+        } else {
+          moveFocus("down");
+        }
         break;
       case DPAD.LEFT:
-        moveFocus("left");
+        if (currentScreen === "detail") {
+          showAdjacent(-1);
+        } else {
+          moveFocus("left");
+        }
         break;
       case DPAD.RIGHT:
-        moveFocus("right");
+        if (currentScreen === "detail") {
+          showAdjacent(1);
+        } else {
+          moveFocus("right");
+        }
         break;
       case DPAD.SELECT:
         if (document.activeElement && document.activeElement.classList.contains("focusable")) {
@@ -366,13 +513,9 @@
 
   collectScreens();
   restore();
-  updateStatus();
-  toggleEl.focus();
+  focusFirst(screens.home);
   fetchFeed();
   setInterval(tick, TICK_MS);
   setInterval(fetchFeed, POLL_MS);
-  setInterval(function () {
-    clockEl.textContent = formatClock(new Date());
-  }, 1000);
-  clockEl.textContent = formatClock(new Date());
+  setInterval(updateChrome, 1000);
 })();
