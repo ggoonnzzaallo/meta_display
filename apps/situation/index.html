@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=600, height=600, initial-scale=1.0, user-scalable=no">
+  <meta name="description" content="Live world and markets headline terminal for Meta Ray-Ban Display glasses.">
+  <meta name="mrbd-web-app-capable" content="yes">
+  <title>Situation</title>
+  <link rel="icon" href="favicon.png" sizes="128x128" type="image/png">
+  <link rel="apple-touch-icon" href="favicon.png" sizes="128x128">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="app">
+    <section id="home" class="screen" aria-label="Situation terminal">
+      <header class="header">
+        <h1>SITUATION</h1>
+                <span id="clock" class="header-meta">--:--</span>
+        <span id="status" class="header-status">LIVE</span>
+      </header>
+      <div id="terminal" class="terminal" aria-live="polite"></div>
+      <button id="toggle" class="focusable" type="button">Pause</button>
+    </section>
+
+    <section id="detail" class="screen hidden" aria-label="Headline detail">
+      <header class="header">
+        <h1>DETAIL</h1>
+        <span id="detail-meta" class="header-meta"></span>
+      </header>
+      <div class="detail-body">
+        <p id="detail-headline" class="detail-headline"></p>
+        <p id="detail-summary" class="detail-summary"></p>
+      </div>
+      <button id="detail-back" class="focusable" type="button" data-action="home">Back</button>
+    </section>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>

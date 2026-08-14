@@ -1,0 +1,247 @@
+:root {
+  --bg-primary: #000000;
+  --bg-surface: #1c1e21;
+  --text-primary: #ffffff;
+  --text-secondary: #e4e6eb;
+  --text-muted: #b0b3b8;
+  --focus-ring: #00d4ff;
+  --focus-glow: rgba(0, 212, 255, 0.4);
+  --sev-1: #00ff88;
+  --sev-2: #ffd23f;
+  --sev-3: #ff9f43;
+  --sev-4: #ff4466;
+  --sev-ink: #0a0a0f;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body {
+  width: 600px;
+  height: 600px;
+  overflow: hidden;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+#app {
+  width: 600px;
+  height: 600px;
+  padding: 8px;
+}
+
+.screen {
+  width: 584px;
+  height: 584px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  height: 64px;
+  padding: 0 16px;
+  background: var(--bg-surface);
+  border-radius: 12px;
+  flex-shrink: 0;
+  gap: 12px;
+}
+
+.header h1 {
+  font-size: 28px;
+  font-weight: 700;
+  flex: 1;
+}
+
+.screen.hidden {
+  display: none;
+}
+
+.header-meta,
+.header-status {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.header-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.header-status.is-paused,
+.header-status.is-error {
+  color: var(--sev-4);
+}
+
+.terminal {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: 8px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.row {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: stretch;
+  width: 100%;
+  min-height: 88px;
+  padding: 8px 12px;
+  background: var(--bg-surface);
+  border-radius: 10px;
+  overflow: hidden;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+
+.row-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--focus-ring);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sev-badge {
+  flex-shrink: 0;
+  padding: 1px 8px;
+  border-radius: 6px;
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1.3;
+  color: var(--sev-ink);
+}
+
+.sev-badge.sev-1 {
+  background: var(--sev-1);
+}
+
+.sev-badge.sev-2 {
+  background: var(--sev-2);
+}
+
+.sev-badge.sev-3 {
+  background: var(--sev-3);
+}
+
+.sev-badge.sev-4 {
+  background: var(--sev-4);
+  color: #ffffff;
+}
+
+.row.sev-1 {
+  box-shadow: inset 8px 0 0 var(--sev-1);
+}
+
+.row.sev-2 {
+  box-shadow: inset 8px 0 0 var(--sev-2);
+}
+
+.row.sev-3 {
+  box-shadow: inset 8px 0 0 var(--sev-3);
+}
+
+.row.sev-4 {
+  box-shadow: inset 8px 0 0 var(--sev-4);
+}
+
+.row.focusable:focus.sev-1 {
+  box-shadow: inset 8px 0 0 var(--sev-1), 0 0 20px var(--focus-glow);
+}
+
+.row.focusable:focus.sev-2 {
+  box-shadow: inset 8px 0 0 var(--sev-2), 0 0 20px var(--focus-glow);
+}
+
+.row.focusable:focus.sev-3 {
+  box-shadow: inset 8px 0 0 var(--sev-3), 0 0 20px var(--focus-glow);
+}
+
+.row.focusable:focus.sev-4 {
+  box-shadow: inset 8px 0 0 var(--sev-4), 0 0 20px var(--focus-glow);
+}
+
+.row-headline {
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.focusable {
+  min-height: 88px;
+  padding: 0 20px;
+  border: 2px solid transparent;
+  border-radius: 12px;
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  font-size: 24px;
+  font-weight: 700;
+  text-align: center;
+  opacity: 0.8;
+  flex-shrink: 0;
+  transition:
+    transform 475ms cubic-bezier(0.6, 0, 0.4, 1),
+    opacity 300ms cubic-bezier(0.4, 0.04, 0.5, 1),
+    border-color 300ms ease,
+    box-shadow 300ms ease;
+}
+
+.row.focusable {
+  text-align: left;
+  padding: 8px 12px;
+  font-size: inherit;
+  font-weight: inherit;
+}
+
+.focusable:focus {
+  outline: none;
+  opacity: 1;
+  border-color: var(--focus-ring);
+  box-shadow: 0 0 20px var(--focus-glow);
+  transform: scale(calc(1 - 8 / 88));
+}
+
+.detail-body {
+  flex: 1;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: 8px 4px;
+}
+
+.detail-headline {
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.25;
+  margin-bottom: 12px;
+}
+
+.detail-summary {
+  font-size: 20px;
+  line-height: 1.35;
+  color: var(--text-secondary);
+}
