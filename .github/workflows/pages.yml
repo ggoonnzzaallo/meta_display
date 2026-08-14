@@ -27,7 +27,7 @@ jobs:
       - name: Assemble public site
         run: |
           mkdir -p _site/apps
-          cp .nojekyll index.html styles.css app.js favicon.png icon-96.png apple-touch-icon.png manifest.webmanifest _site/
+          cp .nojekyll index.html styles.css app.js favicon.png icon-96.png icon-128.png apple-touch-icon.png manifest.webmanifest _site/
           cp -R apps/. _site/apps/
           python3 scripts/fetch_feed.py --out _site/apps/situation/feed.json || echo "situation feed fetch failed, keeping seed"
           python3 scripts/fetch_markets.py --out _site/apps/markets/feed.json || echo "markets feed fetch failed, keeping seed"
