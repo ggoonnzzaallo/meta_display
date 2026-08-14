@@ -11,6 +11,7 @@
 
   var APPS = [
     { name: "Situation", href: "apps/situation/" },
+    { name: "Markets", href: "apps/markets/" },
     { name: "Starter", href: "apps/starter/" },
   ];
 

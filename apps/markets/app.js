@@ -5,9 +5,9 @@
   var TICK_MS = 1200;
   var POLL_MS = 20000;
   var STORAGE = {
-    seen: "situation_seen_ids",
-    paused: "situation_paused",
-    lines: "situation_last_lines",
+    seen: "markets_seen_ids",
+    paused: "markets_paused",
+    lines: "markets_last_lines",
   };
 
   var DPAD = {
@@ -16,6 +16,15 @@
     LEFT: "ArrowLeft",
     RIGHT: "ArrowRight",
     SELECT: "Enter",
+  };
+
+  var KIND_LABEL = {
+    idx: "IDX",
+    up: "UP",
+    down: "DN",
+    vol: "VOL",
+    news: "NEWS",
+    earn: "ERN",
   };
 
   var statusEl = document.getElementById("status");
@@ -85,23 +94,8 @@
     return timeFmt.format(parseTs(iso));
   }
 
-  function categoryTag(item) {
-    var cat = String(item.category || "world").toUpperCase();
-    if (cat === "MARKETS") return "MKT";
-    if (cat === "WORLD") return "WLD";
-    return cat.slice(0, 10);
-  }
-
-  function severityLevel(item) {
-    var n = Number(item.severity);
-    if (!n || n < 1) return 0;
-    if (n > 4) return 4;
-    return n;
-  }
-
-  function severityClass(item) {
-    var n = severityLevel(item);
-    return n ? "sev-" + n : "";
+  function kindOf(item) {
+    return item.kind || "news";
   }
 
   function fillMeta(container, item) {
@@ -109,22 +103,20 @@
     var time = document.createElement("span");
     time.textContent = hhmm(item.ts);
     container.appendChild(time);
-    var level = severityLevel(item);
-    if (level) {
-      var badge = document.createElement("span");
-      badge.className = "sev-badge " + severityClass(item);
-      badge.textContent = "S" + level;
-      container.appendChild(badge);
-    }
+    var badge = document.createElement("span");
+    var kind = kindOf(item);
+    badge.className = "kind-badge " + kind;
+    badge.textContent = KIND_LABEL[kind] || kind.toUpperCase();
+    container.appendChild(badge);
     var rest = document.createElement("span");
-    rest.textContent = [categoryTag(item), item.source, item.location]
-      .filter(Boolean)
-      .join("  ");
+    rest.textContent = [item.symbol, item.source].filter(Boolean).join("  ");
     container.appendChild(rest);
   }
 
-  function isNearTop() {
-    return terminalEl.scrollTop < 48;
+  function isNearBottom() {
+    var remaining =
+      terminalEl.scrollHeight - terminalEl.scrollTop - terminalEl.clientHeight;
+    return remaining < 48;
   }
 
   function renderRows(opts) {
@@ -133,14 +125,15 @@
       document.activeElement && document.activeElement.getAttribute
         ? document.activeElement.getAttribute("data-id")
         : null;
+    var pinBottom = opts.stickToBottom || isNearBottom();
+    var pinTop = opts.stickToTop;
 
     terminalEl.innerHTML = "";
     state.visible.forEach(function (item) {
       var row = document.createElement("button");
       row.type = "button";
-      row.className = ("row focusable " + severityClass(item)).trim();
+      row.className = ("row focusable " + kindOf(item)).trim();
       row.setAttribute("data-id", item.id);
-      row.setAttribute("data-action", "open");
       var meta = document.createElement("div");
       meta.className = "row-meta";
       fillMeta(meta, item);
@@ -152,8 +145,10 @@
       terminalEl.appendChild(row);
     });
 
-    if (opts.stickToTop || isNearTop()) {
+    if (pinTop) {
       terminalEl.scrollTop = 0;
+    } else if (pinBottom) {
+      terminalEl.scrollTop = terminalEl.scrollHeight;
     }
     if (keepId && currentScreen === "home") {
       var keepEl = terminalEl.querySelector('[data-id="' + keepId + '"]');
@@ -200,40 +195,30 @@
     });
   }
 
-  function newestFirst(items) {
-    return items.slice().sort(function (a, b) {
-      return parseTs(b.ts).getTime() - parseTs(a.ts).getTime();
-    });
-  }
-
   function applyFirstPaint(items) {
-    state.visible = newestFirst(items).slice(0, MAX_ROWS);
+    state.visible = items.slice(0, MAX_ROWS);
     rememberAll(items);
     renderRows({ stickToTop: true });
     persist();
   }
 
   function enqueueNew(items) {
-    newestFirst(items)
-      .filter(function (item) {
-        return item.id && !state.seen[item.id];
-      })
-      .reverse()
-      .forEach(function (item) {
-        state.queue.push(item);
-        markSeen(item.id);
-      });
+    items.forEach(function (item) {
+      if (!item.id || state.seen[item.id]) return;
+      state.queue.push(item);
+      markSeen(item.id);
+    });
   }
 
   function tick() {
     if (currentScreen !== "home") return;
     if (state.paused || !state.queue.length) return;
     var next = state.queue.shift();
-    state.visible.unshift(next);
+    state.visible.push(next);
     if (state.visible.length > MAX_ROWS) {
-      state.visible.pop();
+      state.visible.shift();
     }
-    renderRows({ stickToTop: isNearTop() });
+    renderRows({ stickToBottom: isNearBottom() });
     persist();
   }
 
@@ -275,7 +260,7 @@
     state.seen = seen;
     var lines = loadJson(STORAGE.lines, []);
     if (Array.isArray(lines) && lines.length) {
-      state.visible = newestFirst(lines).slice(0, MAX_ROWS);
+      state.visible = lines.slice(0, MAX_ROWS);
       renderRows({ stickToTop: true });
     }
     setPaused(localStorage.getItem(STORAGE.paused) === "1");

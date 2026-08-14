@@ -29,7 +29,8 @@ jobs:
           mkdir -p _site/apps
           cp .nojekyll index.html styles.css app.js favicon.png manifest.webmanifest _site/
           cp -R apps/. _site/apps/
-          python3 scripts/fetch_feed.py --out _site/apps/situation/feed.json || echo "feed fetch failed, keeping seed"
+          python3 scripts/fetch_feed.py --out _site/apps/situation/feed.json || echo "situation feed fetch failed, keeping seed"
+          python3 scripts/fetch_markets.py --out _site/apps/markets/feed.json || echo "markets feed fetch failed, keeping seed"
       - uses: actions/configure-pages@v5
         with:
           enablement: true
