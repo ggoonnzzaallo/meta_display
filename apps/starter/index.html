@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=600, height=600, initial-scale=1.0, user-scalable=no">
+  <meta name="description" content="Starter smoke test for Meta Ray-Ban Display: 600x600 viewport and D-pad navigation.">
+  <meta name="mrbd-web-app-capable" content="yes">
+  <title>Starter</title>
+  <link rel="icon" href="favicon.png" sizes="128x128" type="image/png">
+  <link rel="apple-touch-icon" href="favicon.png" sizes="128x128">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="app">
+    <section id="home" class="screen" aria-label="Home">
+      <header class="header">
+        <h1>Starter</h1>
+        <span class="header-meta">600×600</span>
+      </header>
+      <div class="content">
+        <p class="lede">Arrow keys move focus. Enter activates. That is the glasses input model.</p>
+        <button class="focusable" data-action="about">About constraints</button>
+        <button class="focusable" data-action="input">Check input</button>
+      </div>
+    </section>
+
+    <section id="about" class="screen hidden" aria-label="About">
+      <header class="header">
+        <h1>Constraints</h1>
+      </header>
+      <div class="content">
+        <ul class="facts">
+          <li>Fixed 600×600 viewport, no page scroll</li>
+          <li>Black is transparent on the additive display</li>
+          <li>Neural Band / captouch → arrows + Enter</li>
+          <li>Glasses require a public HTTPS URL</li>
+        </ul>
+        <button class="focusable" data-action="home">Back</button>
+      </div>
+    </section>
+
+    <section id="input" class="screen hidden" aria-label="Input check">
+      <header class="header">
+        <h1>Input</h1>
+      </header>
+      <div class="content">
+        <p class="lede">Last key</p>
+        <p id="last-key" class="key-readout">—</p>
+        <button class="focusable" data-action="home">Back</button>
+      </div>
+    </section>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>

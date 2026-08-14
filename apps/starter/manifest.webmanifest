@@ -1,0 +1,11 @@
+{
+  "name": "Starter",
+  "short_name": "Starter",
+  "description": "Starter smoke test for Meta Ray-Ban Display glasses.",
+  "icons": [
+    { "src": "favicon.png", "sizes": "128x128", "type": "image/png" }
+  ],
+  "background_color": "#000000",
+  "theme_color": "#000000",
+  "display": "standalone"
+}

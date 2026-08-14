@@ -1,0 +1,90 @@
+(function () {
+  "use strict";
+
+  var DPAD = {
+    UP: "ArrowUp",
+    DOWN: "ArrowDown",
+    LEFT: "ArrowLeft",
+    RIGHT: "ArrowRight",
+    SELECT: "Enter",
+  };
+
+  var APPS = [
+    { name: "Starter", href: "apps/starter/" },
+  ];
+
+  function renderApps() {
+    var list = document.getElementById("app-list");
+    APPS.forEach(function (app) {
+      var button = document.createElement("button");
+      button.className = "focusable";
+      button.setAttribute("data-href", app.href);
+      button.textContent = app.name;
+      list.appendChild(button);
+    });
+  }
+
+  function moveFocus(direction) {
+    var focusables = Array.from(
+      document.querySelectorAll(".focusable:not([disabled]):not(.hidden)")
+    );
+    if (!focusables.length) return;
+
+    var idx = focusables.indexOf(document.activeElement);
+    if (idx === -1) {
+      focusables[0].focus();
+      return;
+    }
+
+    var next =
+      direction === "up" || direction === "left"
+        ? idx > 0
+          ? idx - 1
+          : focusables.length - 1
+        : idx < focusables.length - 1
+          ? idx + 1
+          : 0;
+
+    focusables[next].focus();
+  }
+
+  function openFocused() {
+    var el = document.activeElement;
+    if (!el || !el.classList.contains("focusable")) return;
+    var href = el.getAttribute("data-href");
+    if (href) window.location.href = href;
+  }
+
+  document.addEventListener("keydown", function (event) {
+    switch (event.key) {
+      case DPAD.UP:
+        moveFocus("up");
+        break;
+      case DPAD.DOWN:
+        moveFocus("down");
+        break;
+      case DPAD.LEFT:
+        moveFocus("left");
+        break;
+      case DPAD.RIGHT:
+        moveFocus("right");
+        break;
+      case DPAD.SELECT:
+        openFocused();
+        break;
+      default:
+        return;
+    }
+    event.preventDefault();
+  });
+
+  document.addEventListener("click", function (event) {
+    var target = event.target.closest("[data-href]");
+    if (!target) return;
+    window.location.href = target.getAttribute("data-href");
+  });
+
+  renderApps();
+  var first = document.querySelector(".focusable");
+  if (first) first.focus();
+})();

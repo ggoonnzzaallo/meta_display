@@ -1,0 +1,34 @@
+---
+description: Meta Ray-Ban Display Web Apps constraints and canonical docs
+alwaysApply: true
+---
+
+# Meta Display Web Apps
+
+This repo builds standalone Web Apps for Meta Ray-Ban Display glasses. Before changing app code, re-read the canonical docs and call Wearables MCP `search_webapps_docs` when that tool is available. If MCP is unavailable, use the docs below and say so.
+
+## Canonical docs (source of truth)
+
+- https://wearables.developer.meta.com/docs/develop/webapps
+- https://wearables.developer.meta.com/docs/develop/webapps/setup/
+- https://wearables.developer.meta.com/docs/develop/webapps/build/
+- https://wearables.developer.meta.com/docs/develop/webapps/test/
+- https://developers.meta.com/blog/build-for-display-glasses/
+- Toolkit: https://github.com/facebookincubator/meta-wearables-webapp
+- MCP: https://mcp.developer.meta.com/wearables (`search_webapps_docs`, no auth)
+
+If a plugin skill conflicts with those pages, follow the official docs.
+
+## Hard constraints
+
+- Fixed **600 x 600** viewport, `overflow: hidden`, no page scrolling
+- Additive display: page background `#000000` (transparent). Visible UI uses dark gray (`#1C1E21`), light high-contrast text
+- Input is **arrow keys + Enter** (Neural Band / captouch). No mouse, touch, or physical keyboard. Every control needs `.focusable` and a visible focus state
+- Required HTML: `meta name="mrbd-web-app-capable" content="yes"`, app-specific `description`, PNG favicon ≥52x52 (no SVG)
+- Glasses load **HTTPS only**. Host on **GitHub Pages**, not Vercel. Localhost is for desktop smoke tests only
+- Public URLs: `https://ggoonnzzaallo.github.io/meta_display/` (launcher) and `.../apps/<name>/` (keep the trailing slash)
+- Default stack: vanilla HTML/CSS/JS in `apps/<name>/`. Register each new app in root `app.js` `APPS`. Do not add React/Vue unless the user asks
+
+## Not supported yet (official build guide)
+
+Camera, microphone, text input, offline, notifications, back navigation, continuous cursor.

@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=600, height=600, initial-scale=1.0, user-scalable=no">
+  <meta name="description" content="Launcher for Meta Ray-Ban Display web apps hosted from this GitHub repo.">
+  <meta name="mrbd-web-app-capable" content="yes">
+  <title>Display Apps</title>
+  <link rel="icon" href="favicon.png" sizes="128x128" type="image/png">
+  <link rel="apple-touch-icon" href="favicon.png" sizes="128x128">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="app">
+    <section id="home" class="screen" aria-label="App launcher">
+      <header class="header">
+        <h1>Display Apps</h1>
+        <span class="header-meta">GitHub</span>
+      </header>
+      <div class="content">
+        <p class="lede">Arrow keys to choose an app. Enter to open it.</p>
+        <div id="app-list"></div>
+      </div>
+    </section>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>
