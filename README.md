@@ -40,7 +40,7 @@ Apps are served over HTTPS from this repo, which is what the glasses require. Me
 
 Pushes to `main` deploy via `.github/workflows/pages.yml`. Keep a trailing slash on app URLs so relative CSS/JS resolve.
 
-One-time GitHub setting if the first deploy does not go live: **Settings → Pages → Source → GitHub Actions**.
+If a deploy fails with “Pages site not found,” enable it once: **Settings → Pages → Source → GitHub Actions**, then re-run the workflow.
 
 ## Glasses checklist
 
