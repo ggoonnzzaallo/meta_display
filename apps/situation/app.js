@@ -27,6 +27,7 @@
   var detailMetaEl = document.getElementById("detail-meta");
   var detailHeadlineEl = document.getElementById("detail-headline");
   var detailSummaryEl = document.getElementById("detail-summary");
+  var detailBackEl = document.getElementById("detail-back");
 
   var screens = {};
   var currentScreen = "home";
@@ -331,10 +332,15 @@
     updateChrome();
   }
 
+  function focusDetailBack() {
+    if (detailBackEl) detailBackEl.focus();
+  }
+
   function openDetail(item) {
     if (!item) return;
     renderDetail(item);
     navigateTo("detail");
+    focusDetailBack();
   }
 
   function showAdjacent(delta) {
@@ -343,6 +349,7 @@
     if (idx < 0) idx = 0;
     var next = (idx + delta + state.visible.length) % state.visible.length;
     renderDetail(state.visible[next]);
+    focusDetailBack();
   }
 
   function goHome() {
@@ -386,6 +393,10 @@
     focusables[next].focus();
     focusables[next].scrollIntoView({ block: "nearest" });
   }
+
+  detailBackEl.addEventListener("click", function () {
+    goHome();
+  });
 
   terminalEl.addEventListener("click", function (event) {
     var row = event.target.closest("[data-id]");
@@ -460,6 +471,10 @@
         }
         break;
       case DPAD.SELECT:
+        if (currentScreen === "detail") {
+          goHome();
+          break;
+        }
         if (document.activeElement && document.activeElement.classList.contains("focusable")) {
           document.activeElement.click();
         }
