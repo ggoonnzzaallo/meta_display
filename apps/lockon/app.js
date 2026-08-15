@@ -9,7 +9,7 @@
     SELECT: "Enter",
   };
 
-  var BUILD = "v26";
+  var BUILD = "v27";
   var SIZE = 600;
   var YAW_MIN = -10;
   var YAW_MAX = 10;
@@ -18,11 +18,10 @@
   var PX_PER_DEG = 16;
   var PITCH_SIGN = -1;
   var LOOK_SCALE = 1;
-  var SPIKE_DEG = 40;
-  var PITCH_SMOOTH = 0.16;
-  var HEAD_YAW_MAX = 16;
-  var HEAD_PITCH_MIN = -8;
-  var HEAD_PITCH_MAX = 14;
+  var SPIKE_DEG = 50;
+  var HEAD_YAW_MAX = 18;
+  var HEAD_PITCH_MIN = -16;
+  var HEAD_PITCH_MAX = 16;
   var LOCK_FILL = 0.4;
   var LOCK_DECAY = 0.7;
   var BOOM_TIME = 0.85;
@@ -198,8 +197,8 @@
   }
 
   function resetLookFilters() {
-    euroX = createEuro(2.4, 0.08);
-    euroY = createEuro(0.85, 0.02);
+    euroX = createEuro(4.5, 0.2);
+    euroY = createEuro(4.5, 0.2);
     lookYawDeg = 0;
     lookPitchDeg = 0;
     lookX = 0;
@@ -271,7 +270,7 @@
         "°," +
         Math.round(lookPitchDeg) +
         "°  pipper FIXED",
-      "look yaw=dA+dG  pit=-dB  (Euler)",
+      "look yaw=dA  pit=-dB",
       "aim X:" +
         horizAxis +
         " Y:" +
@@ -520,14 +519,13 @@
       demoMode = false;
       var dA = wrapDelta(rawAlpha, alpha0);
       var dB = wrapDelta(rawBeta, beta0);
-      var dG = wrapDelta(rawGamma, gamma0);
       if (!gotOrientation && gotGravity) {
         nextYaw = gravRoll - gravRoll0;
         nextPitch = PITCH_SIGN * (gravPitch - gravPitch0);
         horizAxis = "GRAV";
         vertAxis = "GRAV";
       } else {
-        var yaw = dA + dG;
+        var yaw = dA;
         var pitch = PITCH_SIGN * dB;
         var yawJump = Math.abs(wrapDelta(yaw, lastEulerYaw));
         var pitchJump = Math.abs(pitch - lastEulerPitch);
@@ -544,7 +542,7 @@
           lastEulerPitch = pitch;
           nextYaw = yaw;
           nextPitch = pitch;
-          horizAxis = "A+G";
+          horizAxis = "A";
           vertAxis = "B";
         }
       }
@@ -564,9 +562,7 @@
 
     var clamped = clampHead(nextYaw, nextPitch);
     lookYawDeg = filterEuro(euroX, clamped.yaw, dt);
-    var filteredPitch = filterEuro(euroY, clamped.pitch, dt);
-    var pitchK = 1 - Math.exp(-dt / PITCH_SMOOTH);
-    lookPitchDeg += (filteredPitch - lookPitchDeg) * pitchK;
+    lookPitchDeg = filterEuro(euroY, clamped.pitch, dt);
     clamped = clampHead(lookYawDeg, lookPitchDeg);
     lookYawDeg = clamped.yaw;
     lookPitchDeg = clamped.pitch;
