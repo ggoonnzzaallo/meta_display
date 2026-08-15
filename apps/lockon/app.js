@@ -9,14 +9,14 @@
     SELECT: "Enter",
   };
 
-  var BUILD = "v27";
+  var BUILD = "v28";
   var SIZE = 600;
   var YAW_MIN = -10;
   var YAW_MAX = 10;
   var PITCH_MIN = 2;
   var PITCH_MAX = 9;
   var PX_PER_DEG = 16;
-  var PITCH_SIGN = -1;
+  var PITCH_SIGN = 1;
   var LOOK_SCALE = 1;
   var SPIKE_DEG = 50;
   var HEAD_YAW_MAX = 18;
@@ -270,7 +270,7 @@
         "°," +
         Math.round(lookPitchDeg) +
         "°  pipper FIXED",
-      "look yaw=dA  pit=-dB",
+      "look yaw=dA  pit=+dB",
       "aim X:" +
         horizAxis +
         " Y:" +
