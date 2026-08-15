@@ -9,7 +9,7 @@
     SELECT: "Enter",
   };
 
-  var BUILD = "v19";
+  var BUILD = "v20";
   var SIZE = 600;
   var YAW_MIN = -24;
   var YAW_MAX = 24;
@@ -94,6 +94,8 @@
   var lookPitchDeg = 0;
   var lookX = 0;
   var lookY = 0;
+  var pipperX = 300;
+  var pipperY = 300;
   var euroX = null;
   var euroY = null;
 
@@ -198,6 +200,8 @@
     lookPitchDeg = 0;
     lookX = 0;
     lookY = 0;
+    pipperX = 300;
+    pipperY = 300;
   }
 
   function fmt(n) {
@@ -466,12 +470,9 @@
   }
 
   function spawnBandit() {
-    var patterns = ["orbit", "figure8", "zigzag", "hoverdash", "spiral"];
-    var pattern = patterns[Math.floor(rng() * patterns.length)];
     var easy = wave === 1;
     bandit = {
-      pattern: pattern,
-      secondary: !easy && wave > 2 && rng() > 0.45,
+      pattern: rng() > 0.5 ? "orbit" : "figure8",
       t: 0,
       cyaw: (rng() - 0.5) * (easy ? 16 : 28),
       cpitch: easy ? 3.5 + rng() * 2 : 4 + rng() * 3,
@@ -480,15 +481,7 @@
       ryaw: easy ? 6 + rng() * 5 : 8 + rng() * 8,
       rpitch: easy ? 0.6 + rng() * 0.6 : 1 + rng() * 1.2,
       phase: rng() * Math.PI * 2,
-      speed: easy ? 0.28 : 0.28 + (wave - 1) * 0.1,
-      jinkEvery: easy ? 8 : Math.max(2, 5.5 - wave * 0.2),
-      jinkTimer: easy ? 5 + rng() * 2 : 2 + rng() * 1.5,
-      jinkYaw: 0,
-      jinkPitch: 0,
-      jinkAge: 0,
-      dash: 0,
-      dashDir: 1,
-      hoverT: 0,
+      speed: easy ? 0.22 : 0.22 + (wave - 1) * 0.08,
     };
     lockMeter = 0;
     unlockedTime = 0;
@@ -499,76 +492,27 @@
   function updateBandit(dt) {
     if (!bandit) return;
     bandit.t += dt * bandit.speed;
-    bandit.jinkTimer -= dt;
-    bandit.jinkAge = Math.max(0, bandit.jinkAge - dt);
-
     var t = bandit.t + bandit.phase;
-    var yaw = bandit.cyaw;
-    var pitch = bandit.cpitch;
-
-    switch (bandit.pattern) {
-      case "orbit":
-        yaw = bandit.cyaw + Math.cos(t) * bandit.ryaw;
-        pitch = bandit.cpitch + Math.sin(t) * bandit.rpitch;
-        break;
-      case "figure8":
-        yaw = bandit.cyaw + Math.sin(t) * bandit.ryaw;
-        pitch = bandit.cpitch + Math.sin(t * 2) * bandit.rpitch * 0.7;
-        break;
-      case "zigzag":
-        yaw = bandit.cyaw + Math.sin(t * 2.4) * bandit.ryaw;
-        pitch = bandit.cpitch + (Math.asin(Math.sin(t * 1.3)) / (Math.PI / 2)) * bandit.rpitch;
-        break;
-      case "hoverdash":
-        bandit.hoverT += dt;
-        if (bandit.dash > 0) {
-          bandit.dash -= dt;
-          yaw = bandit.cyaw + bandit.dashDir * (1 - Math.max(0, bandit.dash) / 0.32) * bandit.ryaw;
-          pitch = bandit.cpitch + Math.sin(t * 0.8) * 0.8;
-        } else {
-          yaw = bandit.cyaw + Math.sin(t * 0.35) * 0.8;
-          pitch = bandit.cpitch + Math.cos(t * 0.4) * 0.8;
-          if (bandit.hoverT > 0.95) {
-            bandit.hoverT = 0;
-            bandit.dash = 0.32;
-            bandit.dashDir = rng() > 0.5 ? 1 : -1;
-            bandit.cyaw = clamp(bandit.cyaw + bandit.dashDir * 8, YAW_MIN + 4, YAW_MAX - 4);
-          }
-        }
-        break;
-      default:
-        var r = 1.2 + (Math.sin(t * 0.35) * 0.5 + 0.5) * Math.min(bandit.ryaw, 3);
-        yaw = bandit.cyaw + Math.cos(t * 1.4) * r;
-        pitch = bandit.cpitch + Math.sin(t * 1.4) * bandit.rpitch * 0.75;
-        break;
+    var wantYaw;
+    var wantPitch;
+    if (bandit.pattern === "figure8") {
+      wantYaw = bandit.cyaw + Math.sin(t) * bandit.ryaw;
+      wantPitch = bandit.cpitch + Math.sin(t * 2) * bandit.rpitch * 0.7;
+    } else {
+      wantYaw = bandit.cyaw + Math.cos(t) * bandit.ryaw;
+      wantPitch = bandit.cpitch + Math.sin(t) * bandit.rpitch;
     }
-
-    if (bandit.secondary) {
-      yaw += Math.sin(t * 0.55) * 1;
-      pitch += Math.cos(t * 0.4) * 0.6;
-    }
-
-    if (bandit.jinkTimer <= 0) {
-      bandit.jinkTimer = bandit.jinkEvery * (0.7 + rng() * 0.6);
-      bandit.jinkYaw = (rng() - 0.5) * (wave === 1 ? 8 : 14);
-      bandit.jinkPitch = rng() * (wave === 1 ? 1.2 : 2);
-      bandit.jinkAge = 0.45;
-    }
-
-    var jAmt = bandit.jinkAge / 0.45;
-    yaw += bandit.jinkYaw * jAmt;
-    pitch += bandit.jinkPitch * jAmt;
-
-    var held = clampTarget(yaw, pitch);
-    bandit.yaw = held.yaw;
-    bandit.pitch = held.pitch;
+    var held = clampTarget(wantYaw, wantPitch);
+    var k = 1 - Math.exp(-dt / 0.55);
+    bandit.yaw += (held.yaw - bandit.yaw) * k;
+    bandit.pitch += (held.pitch - bandit.pitch) * k;
   }
 
   function banditScreen() {
     if (!bandit) return { x: 300, y: 300 };
     return {
-      x: 300 + (bandit.yaw - lookYawDeg) * PX_PER_DEG,
-      y: 300 + (bandit.pitch - lookPitchDeg) * PX_PER_DEG,
+      x: 300 + bandit.yaw * PX_PER_DEG,
+      y: 300 - bandit.pitch * PX_PER_DEG,
     };
   }
 
@@ -610,7 +554,9 @@
     lookYawDeg = clamped.yaw;
     lookPitchDeg = clamped.pitch;
     lookX = lookYawDeg * PX_PER_DEG;
-    lookY = -lookPitchDeg * PX_PER_DEG;
+    lookY = lookPitchDeg * PX_PER_DEG;
+    pipperX = clamp(300 + lookX, 36, SIZE - 36);
+    pipperY = clamp(300 + lookY, 100, SIZE - 36);
   }
 
   function canFire() {
@@ -717,7 +663,7 @@
 
     var screen = banditScreen();
     var radius = lockRadius();
-    var dist = hypot(300 - screen.x, 300 - screen.y);
+    var dist = hypot(pipperX - screen.x, pipperY - screen.y);
     locked = dist < radius;
 
     if (grace > 0) {
@@ -784,29 +730,9 @@
     c.stroke();
   }
 
-  function drawHeadGhost(c) {
-    var x = clamp(300 + lookX, 28, SIZE - 28);
-    var y = clamp(300 + lookY, 100, SIZE - 28);
-    c.strokeStyle = AMBER;
-    c.lineWidth = 2;
-    c.beginPath();
-    c.arc(x, y, 10, 0, Math.PI * 2);
-    c.stroke();
-    c.beginPath();
-    c.moveTo(x - 14, y);
-    c.lineTo(x + 14, y);
-    c.moveTo(x, y - 14);
-    c.lineTo(x, y + 14);
-    c.stroke();
-    c.font = "bold 14px ui-monospace, SF Mono, Menlo, Consolas, monospace";
-    c.fillStyle = AMBER;
-    c.textAlign = "center";
-    c.fillText("HEAD", x, y - 18);
-  }
-
   function drawPipper(c) {
-    var x = 300;
-    var y = 300;
+    var x = pipperX;
+    var y = pipperY;
     c.strokeStyle = CYAN;
     c.lineWidth = 2;
     c.beginPath();
@@ -829,8 +755,8 @@
   function drawOffscreenCue(c, sx, sy) {
     var mx = clamp(sx, 36, SIZE - 36);
     var my = clamp(sy, 100, SIZE - 36);
-    var dx = sx - 300;
-    var dy = sy - 300;
+    var dx = sx - pipperX;
+    var dy = sy - pipperY;
     var len = hypot(dx, dy) || 1;
     c.strokeStyle = AMBER;
     c.lineWidth = 2;
@@ -918,7 +844,7 @@
       var onScreen =
         screen.x > 20 && screen.x < SIZE - 20 && screen.y > 92 && screen.y < SIZE - 20;
       var radius = lockRadius();
-      var dist = hypot(300 - screen.x, 300 - screen.y);
+      var dist = hypot(pipperX - screen.x, pipperY - screen.y);
       if (onScreen) {
         ctx.strokeStyle = locked || killFlash > 0 ? RED : GREEN;
         ctx.lineWidth = 2;
@@ -932,7 +858,6 @@
     }
 
     drawPipper(ctx);
-    drawHeadGhost(ctx);
 
     ctx.font = "14px ui-monospace, SF Mono, Menlo, Consolas, monospace";
     ctx.fillStyle = CYAN;
