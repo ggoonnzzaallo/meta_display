@@ -9,7 +9,7 @@
     SELECT: "Enter",
   };
 
-  var BUILD = "v28";
+  var BUILD = "v29";
   var SIZE = 600;
   var YAW_MIN = -10;
   var YAW_MAX = 10;
@@ -17,11 +17,13 @@
   var PITCH_MAX = 9;
   var PX_PER_DEG = 16;
   var PITCH_SIGN = 1;
+  var ROLL_SIGN = 1;
   var LOOK_SCALE = 1;
   var SPIKE_DEG = 50;
   var HEAD_YAW_MAX = 18;
   var HEAD_PITCH_MIN = -16;
   var HEAD_PITCH_MAX = 16;
+  var HEAD_ROLL_MAX = 35;
   var LOCK_FILL = 0.4;
   var LOCK_DECAY = 0.7;
   var BOOM_TIME = 0.85;
@@ -78,6 +80,7 @@
   var gravRoll0 = 0;
   var lastEulerYaw = 0;
   var lastEulerPitch = 0;
+  var lastEulerRoll = 0;
   var sampleAlpha = [];
   var sampleBeta = [];
   var sampleGamma = [];
@@ -95,12 +98,14 @@
 
   var lookYawDeg = 0;
   var lookPitchDeg = 0;
+  var lookRollDeg = 0;
   var lookX = 0;
   var lookY = 0;
   var pipperX = 300;
   var pipperY = 300;
   var euroX = null;
   var euroY = null;
+  var euroZ = null;
 
   var running = false;
   var paused = false;
@@ -199,14 +204,17 @@
   function resetLookFilters() {
     euroX = createEuro(4.5, 0.2);
     euroY = createEuro(4.5, 0.2);
+    euroZ = createEuro(4.5, 0.2);
     lookYawDeg = 0;
     lookPitchDeg = 0;
+    lookRollDeg = 0;
     lookX = 0;
     lookY = 0;
     pipperX = 300;
     pipperY = 300;
     lastEulerYaw = 0;
     lastEulerPitch = 0;
+    lastEulerRoll = 0;
   }
 
   function fmt(n) {
@@ -265,12 +273,10 @@
         fmt(lookYawDeg) +
         "  pit " +
         fmt(lookPitchDeg) +
-        "  look " +
-        Math.round(lookYawDeg) +
-        "°," +
-        Math.round(lookPitchDeg) +
-        "°  pipper FIXED",
-      "look yaw=dA  pit=+dB",
+        "  rol " +
+        fmt(lookRollDeg) +
+        "  pipper FIXED",
+      "look yaw=dA  pit=+dB  rol=+dG",
       "aim X:" +
         horizAxis +
         " Y:" +
@@ -468,10 +474,11 @@
     };
   }
 
-  function clampHead(yaw, pitch) {
+  function clampHead(yaw, pitch, roll) {
     return {
       yaw: clamp(yaw, -HEAD_YAW_MAX, HEAD_YAW_MAX),
       pitch: clamp(pitch, HEAD_PITCH_MIN, HEAD_PITCH_MAX),
+      roll: clamp(roll == null ? 0 : roll, -HEAD_ROLL_MAX, HEAD_ROLL_MAX),
     };
   }
 
@@ -514,19 +521,23 @@
   function updateLook(dt) {
     var nextYaw;
     var nextPitch;
+    var nextRoll = lookRollDeg;
     var useImu = gotOrientation || gotGravity;
     if (useImu) {
       demoMode = false;
       var dA = wrapDelta(rawAlpha, alpha0);
       var dB = wrapDelta(rawBeta, beta0);
+      var dG = wrapDelta(rawGamma, gamma0);
       if (!gotOrientation && gotGravity) {
         nextYaw = gravRoll - gravRoll0;
         nextPitch = PITCH_SIGN * (gravPitch - gravPitch0);
+        nextRoll = 0;
         horizAxis = "GRAV";
         vertAxis = "GRAV";
       } else {
         var yaw = dA;
         var pitch = PITCH_SIGN * dB;
+        var roll = ROLL_SIGN * dG;
         var yawJump = Math.abs(wrapDelta(yaw, lastEulerYaw));
         var pitchJump = Math.abs(pitch - lastEulerPitch);
         if (
@@ -545,6 +556,13 @@
           horizAxis = "A";
           vertAxis = "B";
         }
+        var rollJump = Math.abs(roll - lastEulerRoll);
+        if (rollJump > SPIKE_DEG && lastEulerRoll !== 0) {
+          nextRoll = lookRollDeg;
+        } else {
+          lastEulerRoll = roll;
+          nextRoll = roll;
+        }
       }
       var scale = zerosSet && currentScreen === "play" ? LOOK_SCALE : 1;
       nextYaw *= scale;
@@ -556,16 +574,19 @@
       if (keys.ArrowDown) lookPitchDeg -= DEMO_LOOK_SPEED * dt;
       nextYaw = lookYawDeg;
       nextPitch = lookPitchDeg;
+      nextRoll = lookRollDeg;
       horizAxis = "DEMO";
       vertAxis = "DEMO";
     }
 
-    var clamped = clampHead(nextYaw, nextPitch);
+    var clamped = clampHead(nextYaw, nextPitch, nextRoll);
     lookYawDeg = filterEuro(euroX, clamped.yaw, dt);
     lookPitchDeg = filterEuro(euroY, clamped.pitch, dt);
-    clamped = clampHead(lookYawDeg, lookPitchDeg);
+    lookRollDeg = filterEuro(euroZ, clamped.roll, dt);
+    clamped = clampHead(lookYawDeg, lookPitchDeg, lookRollDeg);
     lookYawDeg = clamped.yaw;
     lookPitchDeg = clamped.pitch;
+    lookRollDeg = clamped.roll;
     lookX = lookYawDeg * PX_PER_DEG;
     lookY = lookPitchDeg * PX_PER_DEG;
     pipperX = 300;
@@ -852,7 +873,39 @@
     ctx.fillStyle = "rgba(0, 255, 136, 0.035)";
     for (y = 0; y < SIZE; y += 4) ctx.fillRect(0, y, SIZE, 1);
 
+    ctx.save();
+    ctx.translate(300, 300);
+    ctx.rotate((-lookRollDeg * Math.PI) / 180);
+    ctx.translate(-300, -300);
     drawWorld(ctx);
+    drawBoom(ctx);
+
+    if (bandit) {
+      var screen = banditScreen();
+      var onScreen =
+        screen.x > 20 && screen.x < SIZE - 20 && screen.y > 92 && screen.y < SIZE - 20;
+      var radius = lockRadius();
+      var dist = hypot(pipperX - screen.x, pipperY - screen.y);
+      if (onScreen) {
+        ctx.strokeStyle = locked || killFlash > 0 ? RED : GREEN;
+        ctx.lineWidth = 2;
+        drawDiamond(ctx, screen.x, screen.y, 14);
+        ctx.fillStyle = GREEN;
+        ctx.font = "bold 14px ui-monospace, SF Mono, Menlo, Consolas, monospace";
+        ctx.textAlign = "center";
+        ctx.fillText(
+          bandit.name + "  Y" + Math.round(bandit.yaw) + " P" + Math.round(bandit.pitch),
+          screen.x,
+          screen.y + 28
+        );
+        if (dist < radius * 1.65) {
+          drawLockBox(ctx, screen.x, screen.y, 34 + (1 - clamp(lockMeter, 0, 1)) * 8);
+        }
+      } else {
+        drawOffscreenCue(ctx, screen.x, screen.y);
+      }
+    }
+    ctx.restore();
 
     ctx.strokeStyle = GREEN;
     ctx.lineWidth = 2;
@@ -910,34 +963,6 @@
       ctx.font = "bold 16px ui-monospace, SF Mono, Menlo, Consolas, monospace";
       ctx.textAlign = "center";
       ctx.fillText("PINCH TO FIRE", 300, 108);
-    }
-
-    drawBoom(ctx);
-
-    if (bandit) {
-      var screen = banditScreen();
-      var onScreen =
-        screen.x > 20 && screen.x < SIZE - 20 && screen.y > 92 && screen.y < SIZE - 20;
-      var radius = lockRadius();
-      var dist = hypot(pipperX - screen.x, pipperY - screen.y);
-      if (onScreen) {
-        ctx.strokeStyle = locked || killFlash > 0 ? RED : GREEN;
-        ctx.lineWidth = 2;
-        drawDiamond(ctx, screen.x, screen.y, 14);
-        ctx.fillStyle = GREEN;
-        ctx.font = "bold 14px ui-monospace, SF Mono, Menlo, Consolas, monospace";
-        ctx.textAlign = "center";
-        ctx.fillText(
-          bandit.name + "  Y" + Math.round(bandit.yaw) + " P" + Math.round(bandit.pitch),
-          screen.x,
-          screen.y + 28
-        );
-        if (dist < radius * 1.65) {
-          drawLockBox(ctx, screen.x, screen.y, 34 + (1 - clamp(lockMeter, 0, 1)) * 8);
-        }
-      } else {
-        drawOffscreenCue(ctx, screen.x, screen.y);
-      }
     }
 
     drawPipper(ctx);
@@ -1071,6 +1096,7 @@
     gravRoll0 = gravRoll;
     lastEulerYaw = 0;
     lastEulerPitch = 0;
+    lastEulerRoll = 0;
     zerosSet = true;
     stopDebugLoop();
     resetRunState();
