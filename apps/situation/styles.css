@@ -56,6 +56,13 @@ body {
   gap: 4px;
 }
 
+.header-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
 .header h1 {
   font-size: 24px;
   font-weight: 700;
@@ -63,18 +70,14 @@ body {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-.header-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+  min-width: 0;
+  flex: 1;
 }
 
 .header.header-compact {
   flex-direction: row;
   align-items: center;
+  justify-content: space-between;
   min-height: 64px;
   padding: 0 16px;
 }
@@ -93,7 +96,7 @@ body {
   white-space: nowrap;
 }
 
-#clock {
+.clock {
   flex-shrink: 0;
 }
 
@@ -101,7 +104,6 @@ body {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
-  justify-content: flex-end;
 }
 
 .header-meta.is-error {

@@ -12,6 +12,20 @@
   var screens = {};
   var currentScreen = "home";
   var lastKeyEl = document.getElementById("last-key");
+  var clockEls = document.querySelectorAll(".clock");
+  var clockFmt = new Intl.DateTimeFormat(undefined, {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    timeZoneName: "short",
+  });
+
+  function updateClock() {
+    var now = clockFmt.format(new Date());
+    clockEls.forEach(function (el) {
+      el.textContent = now;
+    });
+  }
 
   function collectScreens() {
     document.querySelectorAll(".screen").forEach(function (screen) {
@@ -101,5 +115,8 @@
   });
 
   collectScreens();
+  updateClock();
+  setInterval(updateClock, 1000);
   navigateTo("home");
 })();
+

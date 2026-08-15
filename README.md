@@ -40,7 +40,7 @@ Apps are served over HTTPS from this repo, which is what the glasses require. Me
 - Markets: [https://gonzalobuilds.com/meta_display/apps/markets/](https://gonzalobuilds.com/meta_display/apps/markets/)
 - Starter: [https://gonzalobuilds.com/meta_display/apps/starter/](https://gonzalobuilds.com/meta_display/apps/starter/)
 
-Pushes to `main` and a **15-minute** schedule deploy via `.github/workflows/pages.yml`. Situation and Markets read same-origin `feed.json` files built in that job. Keep a trailing slash on app URLs so relative CSS/JS resolve.
+Pushes to `main` and a **15-minute** schedule deploy via `.github/workflows/pages.yml`. Situation ingest is MTS-only (`scripts/fetch_feed.py`); glasses do not fetch third-party RSS. Markets and Situation read same-origin `feed.json` files built in that job. Keep a trailing slash on app URLs so relative CSS/JS resolve.
 
 If a deploy fails with “Pages site not found,” enable it once: **Settings → Pages → Source → GitHub Actions**, then re-run the workflow.
 
@@ -57,10 +57,10 @@ From the [setup guide](https://wearables.developer.meta.com/docs/develop/webapps
 
 ```text
 index.html        600×600 launcher (lists apps)
-apps/situation/   live headline terminal (MTS + RSS via feed.json)
+apps/situation/   live headline terminal (MTS-only via feed.json)
 apps/markets/     movers, earnings, headlines (Yahoo quotes + Nasdaq + WSJ/CNBC/SA)
 apps/starter/     smoke-test Web App
-scripts/fetch_feed.py     builds apps/situation/feed.json for Pages
+scripts/fetch_feed.py     builds apps/situation/feed.json from MTS only
 scripts/fetch_markets.py  builds apps/markets/feed.json for Pages
 docs/sources.md   canonical documentation links
 .cursor/          Wearables MCP + project rules

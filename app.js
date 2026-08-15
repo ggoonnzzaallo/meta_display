@@ -86,7 +86,24 @@
     window.location.href = target.getAttribute("data-href");
   });
 
+  function formatClock(date) {
+    return new Intl.DateTimeFormat(undefined, {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+      timeZoneName: "short",
+    }).format(date);
+  }
+
+  function updateClock() {
+    var clockEl = document.getElementById("clock");
+    if (clockEl) clockEl.textContent = formatClock(new Date());
+  }
+
   renderApps();
+  updateClock();
+  setInterval(updateClock, 1000);
   var first = document.querySelector(".focusable");
   if (first) first.focus();
 })();
+

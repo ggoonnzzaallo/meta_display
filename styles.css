@@ -44,6 +44,7 @@ body {
 .header {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   height: 64px;
   padding: 0 16px;
   background: var(--bg-surface);

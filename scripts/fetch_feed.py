@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Merge Monitor the Situation events and public RSS into feed.json."""
+"""Build Situation feed.json from Monitor the Situation events only."""
 
 from __future__ import annotations
 
@@ -9,7 +9,6 @@ import json
 import os
 import re
 import sys
-import xml.etree.ElementTree as ET
 from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
 from html import unescape
@@ -17,74 +16,11 @@ from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
-USER_AGENT = "meta-display-situation/1.0 (+https://github.com/ggoonnzzaallo/meta_display)"
+USER_AGENT = "meta-display-situation/1.1 (+https://github.com/ggoonnzzaallo/meta_display)"
 TIMEOUT_S = 20
 MAX_ITEMS = 120
 MTS_URL = "https://monitor-the-situation.com/api/events"
 MTS_PAGE = "https://monitor-the-situation.com/"
-
-RSS_FEEDS = [
-    {
-        "name": "BBC",
-        "category": "world",
-        "url": "https://feeds.bbci.co.uk/news/world/rss.xml",
-        "role": "world",
-    },
-    {
-        "name": "AJ",
-        "category": "world",
-        "url": "https://www.aljazeera.com/xml/rss/all.xml",
-        "role": "world",
-    },
-    {
-        "name": "GDN",
-        "category": "world",
-        "url": "https://www.theguardian.com/world/rss",
-        "role": "world",
-    },
-    {
-        "name": "NPR",
-        "category": "world",
-        "url": "https://feeds.npr.org/1001/rss.xml",
-        "role": "world",
-    },
-    {
-        "name": "RW",
-        "category": "disaster",
-        "url": "https://reliefweb.int/updates/rss.xml",
-        "role": "world",
-    },
-    {
-        "name": "BBC",
-        "category": "markets",
-        "url": "https://feeds.bbci.co.uk/news/business/rss.xml",
-        "role": "markets",
-    },
-    {
-        "name": "CNBC",
-        "category": "markets",
-        "url": "https://www.cnbc.com/id/100003114/device/rss/rss.html",
-        "role": "markets",
-    },
-    {
-        "name": "CNBC",
-        "category": "markets",
-        "url": "https://www.cnbc.com/id/10001147/device/rss/rss.html",
-        "role": "markets",
-    },
-    {
-        "name": "YF",
-        "category": "markets",
-        "url": "https://finance.yahoo.com/news/rssindex",
-        "role": "markets",
-    },
-    {
-        "name": "FED",
-        "category": "markets",
-        "url": "https://www.federalreserve.gov/feeds/press_all.xml",
-        "role": "markets",
-    },
-]
 
 
 def utc_now() -> datetime:
@@ -96,7 +32,7 @@ def to_iso(dt: datetime) -> str:
 
 
 def fetch_bytes(url: str) -> bytes:
-    req = Request(url, headers={"User-Agent": USER_AGENT, "Accept": "*/*"})
+    req = Request(url, headers={"User-Agent": USER_AGENT, "Accept": "application/json, */*"})
     with urlopen(req, timeout=TIMEOUT_S) as resp:
         return resp.read()
 
@@ -105,10 +41,6 @@ def strip_html(text: str) -> str:
     text = re.sub(r"<[^>]+>", " ", text or "")
     text = unescape(text)
     return re.sub(r"\s+", " ", text).strip()
-
-
-def normalize_headline(text: str) -> str:
-    return re.sub(r"[^a-z0-9]+", " ", (text or "").lower()).strip()
 
 
 def item_id(*parts: str) -> str:
@@ -131,80 +63,14 @@ def parse_time(value: str | None) -> datetime | None:
         "%Y-%m-%dT%H:%M:%S",
     ):
         try:
-            dt = datetime.strptime(raw.replace("Z", "+0000") if fmt.endswith("%z") and raw.endswith("Z") else raw, fmt)
+            parsed = raw.replace("Z", "+0000") if fmt.endswith("%z") and raw.endswith("Z") else raw
+            dt = datetime.strptime(parsed, fmt)
             if dt.tzinfo is None:
                 dt = dt.replace(tzinfo=timezone.utc)
             return dt
         except ValueError:
             continue
     return None
-
-
-def local_tag(name: str) -> str:
-    if "}" in name:
-        return name.rsplit("}", 1)[-1]
-    return name
-
-
-def text_of(el: ET.Element | None) -> str:
-    if el is None or el.text is None:
-        return ""
-    return el.text.strip()
-
-
-def parse_rss_or_atom(xml_bytes: bytes, source: str, category: str) -> list[dict[str, Any]]:
-    root = ET.fromstring(xml_bytes)
-    items: list[dict[str, Any]] = []
-    for node in root.iter():
-        tag = local_tag(node.tag).lower()
-        if tag not in ("item", "entry"):
-            continue
-        title = ""
-        link = ""
-        summary = ""
-        ts = None
-        for child in list(node):
-            ctag = local_tag(child.tag).lower()
-            if ctag == "title":
-                title = strip_html(text_of(child) or "".join(child.itertext()))
-            elif ctag == "link":
-                href = child.attrib.get("href") or text_of(child)
-                if href:
-                    link = href
-            elif ctag in ("description", "summary", "content", "encoded"):
-                if not summary:
-                    summary = strip_html(text_of(child) or "".join(child.itertext()))
-            elif ctag in ("pubdate", "published", "updated", "date"):
-                ts = parse_time(text_of(child)) or ts
-        if not title:
-            continue
-        if not ts:
-            ts = utc_now()
-        if summary == title:
-            summary = ""
-        items.append(
-            {
-                "id": item_id(source, link or title),
-                "ts": to_iso(ts),
-                "source": source,
-                "category": category,
-                "severity": None,
-                "headline": title,
-                "summary": summary[:500],
-                "location": "",
-                "url": link,
-            }
-        )
-    return items
-
-
-def fetch_rss(feed: dict[str, str]) -> list[dict[str, Any]]:
-    try:
-        body = fetch_bytes(feed["url"])
-        return parse_rss_or_atom(body, feed["name"], feed["category"])
-    except (HTTPError, URLError, TimeoutError, ET.ParseError, OSError) as exc:
-        print(f"rss skip {feed['name']} {feed['url']}: {exc}", file=sys.stderr)
-        return []
 
 
 def parse_mts_time(value: str | None) -> datetime:
@@ -218,6 +84,7 @@ def fetch_mts() -> list[dict[str, Any]]:
     if not isinstance(payload, list):
         raise ValueError("MTS payload is not a list")
     items: list[dict[str, Any]] = []
+    seen: set[str] = set()
     for event in payload:
         if not isinstance(event, dict):
             continue
@@ -235,6 +102,9 @@ def fetch_mts() -> list[dict[str, Any]]:
         except (TypeError, ValueError):
             severity_n = None
         event_id = str(event.get("id") or item_id("MTS", title, location))
+        if event_id in seen:
+            continue
+        seen.add(event_id)
         items.append(
             {
                 "id": event_id,
@@ -248,44 +118,13 @@ def fetch_mts() -> list[dict[str, Any]]:
                 "url": MTS_PAGE,
             }
         )
-    return items
-
-
-def merge_items(batches: list[list[dict[str, Any]]]) -> list[dict[str, Any]]:
-    seen_ids: set[str] = set()
-    seen_headlines: set[str] = set()
-    merged: list[dict[str, Any]] = []
-    for batch in batches:
-        for item in batch:
-            hid = item["id"]
-            headline_key = normalize_headline(item["headline"])
-            if hid in seen_ids:
-                continue
-            if headline_key and headline_key in seen_headlines:
-                continue
-            seen_ids.add(hid)
-            if headline_key:
-                seen_headlines.add(headline_key)
-            merged.append(item)
-    merged.sort(key=lambda row: row["ts"], reverse=True)
-    return merged[:MAX_ITEMS]
+    items.sort(key=lambda row: row["ts"], reverse=True)
+    return items[:MAX_ITEMS]
 
 
 def build_feed() -> dict[str, Any]:
-    mts_items: list[dict[str, Any]] = []
-    try:
-        mts_items = fetch_mts()
-        print(f"mts events: {len(mts_items)}", file=sys.stderr)
-    except (HTTPError, URLError, TimeoutError, ValueError, json.JSONDecodeError, OSError) as exc:
-        print(f"mts failed, using world RSS: {exc}", file=sys.stderr)
-
-    rss_batches: list[list[dict[str, Any]]] = []
-    for feed in RSS_FEEDS:
-        if mts_items and feed["role"] == "world":
-            continue
-        rss_batches.append(fetch_rss(feed))
-
-    items = merge_items([mts_items, *rss_batches])
+    items = fetch_mts()
+    print(f"mts events: {len(items)}", file=sys.stderr)
     return {"updated_at": to_iso(utc_now()), "items": items}
 
 
@@ -294,7 +133,12 @@ def main() -> int:
     parser.add_argument("--out", required=True, help="Output JSON path")
     args = parser.parse_args()
 
-    feed = build_feed()
+    try:
+        feed = build_feed()
+    except (HTTPError, URLError, TimeoutError, ValueError, json.JSONDecodeError, OSError) as exc:
+        print(f"mts failed, keeping existing feed: {exc}", file=sys.stderr)
+        return 1
+
     if not feed["items"]:
         print("no items fetched", file=sys.stderr)
         return 1

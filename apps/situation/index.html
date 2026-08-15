@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=600, height=600, initial-scale=1.0, user-scalable=no">
-  <meta name="description" content="Live world and markets headline terminal for Meta Ray-Ban Display glasses.">
+  <meta name="description" content="Monitor the Situation headline terminal for Meta Ray-Ban Display glasses.">
   <meta name="mrbd-web-app-capable" content="yes">
   <title>Monitoring the Situation</title>
   <link rel="icon" href="icon-96.png" sizes="96x96" type="image/png">
@@ -16,11 +16,11 @@
   <div id="app">
     <section id="home" class="screen" aria-label="Monitoring the Situation">
       <header class="header">
-        <h1>Monitoring the Situation</h1>
-        <div class="header-row">
-          <span id="clock" class="header-meta">--:--</span>
-          <span id="updated" class="header-meta">Updated --</span>
+        <div class="header-title-row">
+          <h1>Monitoring the Situation</h1>
+          <span class="clock header-meta">--:--</span>
         </div>
+        <span id="updated" class="header-meta">Updated --</span>
       </header>
       <div id="terminal" class="terminal" aria-live="polite"></div>
     </section>
@@ -28,13 +28,13 @@
     <section id="detail" class="screen hidden" aria-label="Headline detail">
       <header class="header header-compact">
         <h1 id="detail-pos">1 / 1</h1>
+        <span class="clock header-meta">--:--</span>
       </header>
       <div id="detail-card" class="detail-card">
         <div id="detail-meta" class="row-meta"></div>
         <p id="detail-headline" class="detail-headline"></p>
         <p id="detail-summary" class="detail-summary"></p>
       </div>
-      <button id="detail-back" class="focusable" type="button" data-action="home">Back</button>
     </section>
   </div>
   <script src="app.js"></script>

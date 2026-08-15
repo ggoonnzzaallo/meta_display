@@ -2,7 +2,6 @@
   "use strict";
 
   var MAX_ROWS = 40;
-  var TICK_MS = 1200;
   var POLL_MS = 20000;
   var PINNED = { idx: true, up: true, down: true, vol: true, earn: true };
   var STORAGE = {
@@ -17,6 +16,7 @@
     LEFT: "ArrowLeft",
     RIGHT: "ArrowRight",
     SELECT: "Enter",
+    BACK: "Escape",
   };
 
   var KIND_LABEL = {
@@ -29,7 +29,7 @@
   };
 
   var SWIPE_PX = 56;
-  var clockEl = document.getElementById("clock");
+  var clockEls = document.querySelectorAll(".clock");
   var updatedEl = document.getElementById("updated");
   var terminalEl = document.getElementById("terminal");
   var detailPosEl = document.getElementById("detail-pos");
@@ -37,7 +37,6 @@
   var detailMetaEl = document.getElementById("detail-meta");
   var detailHeadlineEl = document.getElementById("detail-headline");
   var detailSummaryEl = document.getElementById("detail-summary");
-  var detailBackEl = document.getElementById("detail-back");
 
   var screens = {};
   var currentScreen = "home";
@@ -57,7 +56,6 @@
     signalError: false,
     updatedAt: null,
     visible: [],
-    queue: [],
     seen: {},
     detailIndex: -1,
   };
@@ -128,16 +126,13 @@
     container.appendChild(rest);
   }
 
-  function isNearTop() {
-    return terminalEl.scrollTop < 48;
-  }
-
   function renderRows(opts) {
     opts = opts || {};
     var keepId =
       document.activeElement && document.activeElement.getAttribute
         ? document.activeElement.getAttribute("data-id")
         : null;
+    var scroll = terminalEl.scrollTop;
 
     terminalEl.innerHTML = "";
     state.visible.forEach(function (item) {
@@ -156,9 +151,7 @@
       terminalEl.appendChild(row);
     });
 
-    if (opts.stickToTop || isNearTop()) {
-      terminalEl.scrollTop = 0;
-    }
+    terminalEl.scrollTop = opts.stickToTop ? 0 : scroll;
     if (keepId && currentScreen === "home") {
       var keepEl = terminalEl.querySelector('[data-id="' + keepId + '"]');
       if (keepEl) keepEl.focus();
@@ -184,7 +177,10 @@
   }
 
   function updateChrome() {
-    clockEl.textContent = formatClock(new Date());
+    var now = formatClock(new Date());
+    clockEls.forEach(function (el) {
+      el.textContent = now;
+    });
     updatedEl.classList.remove("is-error");
     if (state.signalError) {
       updatedEl.textContent = "NO SIGNAL";
@@ -215,10 +211,9 @@
     });
   }
 
-  function pinCount() {
-    var n = 0;
-    while (n < state.visible.length && isPinned(state.visible[n])) n++;
-    return n;
+  function newestStamp(items) {
+    if (!items.length) return null;
+    return parseTs(newestFirst(items)[0].ts);
   }
 
   function trimVisible() {
@@ -234,62 +229,36 @@
     }
   }
 
-  function applyFirstPaint(items) {
-    state.visible = items.slice(0, MAX_ROWS);
-    rememberAll(items);
-    renderRows({ stickToTop: true });
-    persist();
-    if (currentScreen === "home") focusFirst(screens.home);
-  }
-
-  function replaceSnapshot(items) {
+  function applyList(items, opts) {
+    opts = opts || {};
     var snapshot = items.filter(isPinned);
-    var news = state.visible.filter(function (item) {
-      return !isPinned(item);
-    });
+    var news = newestFirst(
+      items.filter(function (item) {
+        return !isPinned(item);
+      })
+    );
     state.visible = snapshot.concat(news);
     trimVisible();
-    rememberAll(snapshot);
-    renderRows({ stickToTop: isNearTop() });
+    state.updatedAt = newestStamp(state.visible);
+    rememberAll(items);
+    renderRows({ stickToTop: !!opts.stickToTop });
     persist();
-  }
-
-  function enqueueNew(items) {
-    newestFirst(items.filter(function (item) { return !isPinned(item); }))
-      .filter(function (item) {
-        return item.id && !state.seen[item.id];
-      })
-      .reverse()
-      .forEach(function (item) {
-        state.queue.push(item);
-        markSeen(item.id);
-      });
-  }
-
-  function tick() {
-    if (currentScreen !== "home") return;
-    if (!state.queue.length) return;
-    var next = state.queue.shift();
-    state.visible.splice(pinCount(), 0, next);
-    trimVisible();
-    renderRows({ stickToTop: isNearTop() });
-    persist();
+    updateChrome();
+    if (opts.focusHome && currentScreen === "home") focusFirst(screens.home);
   }
 
   function ingest(feed) {
     var items = Array.isArray(feed && feed.items) ? feed.items : [];
-    var stamp = feed && feed.updated_at ? parseTs(feed.updated_at) : new Date();
-    state.updatedAt = stamp;
     state.signalError = items.length === 0;
-    persist();
-    updateChrome();
-    if (!items.length) return;
-    if (!state.visible.length || state.visible.length < 8) {
-      applyFirstPaint(items);
+    if (!items.length) {
+      persist();
+      updateChrome();
       return;
     }
-    replaceSnapshot(items);
-    enqueueNew(items);
+    applyList(items, {
+      stickToTop: !state.visible.length,
+      focusHome: !state.visible.length,
+    });
   }
 
   function fetchFeed() {
@@ -319,10 +288,9 @@
     var lines = loadJson(STORAGE.lines, []);
     if (Array.isArray(lines) && lines.length) {
       state.visible = lines.slice(0, MAX_ROWS);
+      state.updatedAt = newestStamp(state.visible);
       renderRows({ stickToTop: true });
     }
-    var savedUpdated = localStorage.getItem(STORAGE.updated);
-    if (savedUpdated) state.updatedAt = parseTs(savedUpdated);
     updateChrome();
   }
 
@@ -370,6 +338,7 @@
         ? state.detailIndex + 1 + " / " + state.visible.length
         : "1 / 1";
     detailCardEl.scrollTop = 0;
+    updateChrome();
   }
 
   function openDetail(item) {
@@ -395,6 +364,10 @@
     if (!id) return;
     var row = terminalEl.querySelector('[data-id="' + id + '"]');
     if (row) row.focus();
+  }
+
+  function isBackKey(key) {
+    return key === DPAD.BACK || key === "Backspace";
   }
 
   function moveFocus(direction) {
@@ -423,10 +396,6 @@
     focusables[next].focus();
     focusables[next].scrollIntoView({ block: "nearest" });
   }
-
-  detailBackEl.addEventListener("click", function () {
-    goHome();
-  });
 
   terminalEl.addEventListener("click", function (event) {
     var row = event.target.closest("[data-id]");
@@ -466,7 +435,7 @@
   detailCardEl.addEventListener("pointercancel", endSwipe);
 
   document.addEventListener("keydown", function (event) {
-    if (event.key === "Escape" && currentScreen === "detail") {
+    if (isBackKey(event.key) && currentScreen === "detail") {
       goHome();
       event.preventDefault();
       return;
@@ -515,7 +484,6 @@
   restore();
   focusFirst(screens.home);
   fetchFeed();
-  setInterval(tick, TICK_MS);
   setInterval(fetchFeed, POLL_MS);
   setInterval(updateChrome, 1000);
 })();

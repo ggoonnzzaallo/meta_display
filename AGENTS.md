@@ -26,5 +26,5 @@ Vanilla HTML/CSS/JS is the default. Keep the gzipped JS budget under 500KB and i
 - Public launcher: `https://ggoonnzzaallo.github.io/meta_display/`
 - Each app URL must keep a trailing slash: `https://ggoonnzzaallo.github.io/meta_display/apps/<name>/`
 - After adding `apps/<name>/`, also register it in the root `app.js` `APPS` list
-- Situation ingest: `scripts/fetch_feed.py` writes `apps/situation/feed.json` in the Pages job. Do not fetch third-party RSS from the glasses Web App.
+- Situation ingest: `scripts/fetch_feed.py` writes `apps/situation/feed.json` from Monitor the Situation only. Do not fetch third-party RSS from the glasses Web App.
 - Markets ingest: `scripts/fetch_markets.py` writes `apps/markets/feed.json` (Yahoo quotes for movers, Nasdaq earnings calendar, WSJ/CNBC/SA/BBC headlines). Do not scrape Finviz or fetch third-party feeds from the glasses Web App.
