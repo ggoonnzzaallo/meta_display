@@ -27,7 +27,7 @@ No package manager is required.
    npx --yes serve . -l 5173
    ```
 
-2. Open [http://localhost:5173](http://localhost:5173) in Chrome. Situation is at `/apps/situation/`. Markets is at `/apps/markets/`.
+2. Open [http://localhost:5173](http://localhost:5173) in Chrome. Situation is at `/apps/situation/`. Markets is at `/apps/markets/`. IO Probe is at `/apps/ioprobe/`.
 3. Use **arrow keys** to move focus and **Enter** to activate. That is the same input model the glasses send.
 4. Optional: install the [Display Simulator Chrome extension](https://chromewebstore.google.com/detail/jpjlmmodokemlepklkdbimceggpbjcll) and toggle it on the page to preview additive blending.
 
@@ -39,6 +39,7 @@ Apps are served over HTTPS from this repo, which is what the glasses require. Me
 - Situation: [https://gonzalobuilds.com/meta_display/apps/situation/](https://gonzalobuilds.com/meta_display/apps/situation/)
 - Markets: [https://gonzalobuilds.com/meta_display/apps/markets/](https://gonzalobuilds.com/meta_display/apps/markets/)
 - Starter: [https://gonzalobuilds.com/meta_display/apps/starter/](https://gonzalobuilds.com/meta_display/apps/starter/)
+- IO Probe: [https://gonzalobuilds.com/meta_display/apps/ioprobe/](https://gonzalobuilds.com/meta_display/apps/ioprobe/)
 
 Pushes to `main` and a **15-minute** schedule deploy via `.github/workflows/pages.yml`. Situation ingest is MTS-only (`scripts/fetch_feed.py`); glasses do not fetch third-party RSS. Markets and Situation read same-origin `feed.json` files built in that job. Keep a trailing slash on app URLs so relative CSS/JS resolve.
 
@@ -60,6 +61,7 @@ index.html        600×600 launcher (lists apps)
 apps/situation/   live headline terminal (MTS-only via feed.json)
 apps/markets/     movers, earnings, headlines (Yahoo quotes + Nasdaq + WSJ/CNBC/SA)
 apps/starter/     smoke-test Web App
+apps/ioprobe/     camera / mic / location permission probe
 scripts/fetch_feed.py     builds apps/situation/feed.json from MTS only
 scripts/fetch_markets.py  builds apps/markets/feed.json for Pages
 docs/sources.md   canonical documentation links

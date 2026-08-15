@@ -15,6 +15,7 @@
     { name: "Lock On", href: "apps/lockon/" },
     { name: "Strike", href: "apps/strike/" },
     { name: "Starter", href: "apps/starter/" },
+    { name: "IO Probe", href: "apps/ioprobe/" },
   ];
 
   function renderApps() {
