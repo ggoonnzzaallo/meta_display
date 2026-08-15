@@ -9,15 +9,16 @@
     SELECT: "Enter",
   };
 
-  var BUILD = "v21";
+  var BUILD = "v22";
   var SIZE = 600;
   var YAW_MIN = -24;
   var YAW_MAX = 24;
   var PITCH_MIN = 1;
   var PITCH_MAX = 12;
   var PX_PER_DEG = 16;
-  var PITCH_SIGN = 1;
+  var PITCH_SIGN = -1;
   var LOOK_SCALE = 0.3;
+  var PITCH_SMOOTH = 0.16;
   var HEAD_YAW_MAX = 90;
   var HEAD_PITCH_MIN = -80;
   var HEAD_PITCH_MAX = 80;
@@ -195,7 +196,7 @@
 
   function resetLookFilters() {
     euroX = createEuro(2.4, 0.08);
-    euroY = createEuro(2.4, 0.08);
+    euroY = createEuro(0.85, 0.02);
     lookYawDeg = 0;
     lookPitchDeg = 0;
     lookX = 0;
@@ -264,7 +265,7 @@
         Math.round(lookYawDeg) +
         "°," +
         Math.round(lookPitchDeg) +
-        "° (pit+ = look UP, from -B)",
+        "° (pit+ = look UP, -B)",
       "aim X:" +
         horizAxis +
         " Y:" +
@@ -534,7 +535,9 @@
 
     var clamped = clampHead(nextYaw, nextPitch);
     lookYawDeg = filterEuro(euroX, clamped.yaw, dt);
-    lookPitchDeg = filterEuro(euroY, clamped.pitch, dt);
+    var filteredPitch = filterEuro(euroY, clamped.pitch, dt);
+    var pitchK = 1 - Math.exp(-dt / PITCH_SMOOTH);
+    lookPitchDeg += (filteredPitch - lookPitchDeg) * pitchK;
     clamped = clampHead(lookYawDeg, lookPitchDeg);
     lookYawDeg = clamped.yaw;
     lookPitchDeg = clamped.pitch;
