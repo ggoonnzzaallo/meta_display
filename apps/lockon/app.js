@@ -10,11 +10,12 @@
   };
 
   var SIZE = 600;
-  var YAW_MIN = -40;
-  var YAW_MAX = 40;
-  var PITCH_MIN = 0;
-  var PITCH_MAX = 42;
-  var PX_PER_DEG = 8;
+  var YAW_MIN = -8;
+  var YAW_MAX = 8;
+  var PITCH_MIN = 1;
+  var PITCH_MAX = 10;
+  var PX_PER_DEG = 16;
+  var PITCH_SIGN = -1;
   var COMPLEMENT = 0.9;
   var LOCK_FILL = 0.4;
   var LOCK_DECAY = 0.7;
@@ -22,7 +23,7 @@
   var LOST_CONTACT = 5;
   var SPAWN_GRACE = 1.2;
   var BASE_RADIUS = 78;
-  var DEMO_LOOK_SPEED = 90;
+  var DEMO_LOOK_SPEED = 18;
   var BEST_KEY = "lockon-best";
   var SAMPLE_MAX = 16;
 
@@ -253,7 +254,7 @@
         Math.round(lookYawDeg) +
         "°," +
         Math.round(lookPitchDeg) +
-        "°",
+        "° (pit+ = UP)",
       "aim X:" +
         horizAxis +
         " Y:" +
@@ -459,16 +460,16 @@
       pattern: pattern,
       secondary: !easy && wave > 2 && rng() > 0.45,
       t: 0,
-      cyaw: (rng() - 0.5) * (easy ? 18 : 28),
-      cpitch: easy ? 16 + rng() * 8 : 18 + rng() * 12,
+      cyaw: (rng() - 0.5) * (easy ? 4 : 8),
+      cpitch: easy ? 3.5 + rng() * 2 : 4 + rng() * 3,
       yaw: 0,
-      pitch: 18,
-      ryaw: easy ? 6 + rng() * 5 : 10 + rng() * 12,
-      rpitch: easy ? 2 + rng() * 3 : 4 + rng() * 6,
+      pitch: 5,
+      ryaw: easy ? 1.2 + rng() * 1.2 : 2 + rng() * 2,
+      rpitch: easy ? 0.6 + rng() * 0.6 : 1 + rng() * 1.2,
       phase: rng() * Math.PI * 2,
-      speed: easy ? 0.38 : 0.38 + (wave - 1) * 0.14,
-      jinkEvery: easy ? 6.2 : Math.max(1.1, 4.2 - wave * 0.24),
-      jinkTimer: easy ? 3.5 + rng() * 2 : 1.1 + rng() * 1.4,
+      speed: easy ? 0.28 : 0.28 + (wave - 1) * 0.1,
+      jinkEvery: easy ? 8 : Math.max(2, 5.5 - wave * 0.2),
+      jinkTimer: easy ? 5 + rng() * 2 : 2 + rng() * 1.5,
       jinkYaw: 0,
       jinkPitch: 0,
       jinkAge: 0,
@@ -510,34 +511,34 @@
         if (bandit.dash > 0) {
           bandit.dash -= dt;
           yaw = bandit.cyaw + bandit.dashDir * (1 - Math.max(0, bandit.dash) / 0.32) * bandit.ryaw;
-          pitch = bandit.cpitch + Math.sin(t * 0.8) * 3;
+          pitch = bandit.cpitch + Math.sin(t * 0.8) * 0.8;
         } else {
-          yaw = bandit.cyaw + Math.sin(t * 0.35) * 3;
-          pitch = bandit.cpitch + Math.cos(t * 0.4) * 3;
+          yaw = bandit.cyaw + Math.sin(t * 0.35) * 0.8;
+          pitch = bandit.cpitch + Math.cos(t * 0.4) * 0.8;
           if (bandit.hoverT > 0.95) {
             bandit.hoverT = 0;
             bandit.dash = 0.32;
             bandit.dashDir = rng() > 0.5 ? 1 : -1;
-            bandit.cyaw = clamp(bandit.cyaw + bandit.dashDir * 10, YAW_MIN + 16, YAW_MAX - 16);
+            bandit.cyaw = clamp(bandit.cyaw + bandit.dashDir * 2, YAW_MIN + 2, YAW_MAX - 2);
           }
         }
         break;
       default:
-        var r = 8 + (Math.sin(t * 0.35) * 0.5 + 0.5) * Math.min(bandit.ryaw, 18);
+        var r = 1.2 + (Math.sin(t * 0.35) * 0.5 + 0.5) * Math.min(bandit.ryaw, 3);
         yaw = bandit.cyaw + Math.cos(t * 1.4) * r;
         pitch = bandit.cpitch + Math.sin(t * 1.4) * bandit.rpitch * 0.75;
         break;
     }
 
     if (bandit.secondary) {
-      yaw += Math.sin(t * 0.55) * 4;
-      pitch += Math.cos(t * 0.4) * 3;
+      yaw += Math.sin(t * 0.55) * 1;
+      pitch += Math.cos(t * 0.4) * 0.6;
     }
 
     if (bandit.jinkTimer <= 0) {
       bandit.jinkTimer = bandit.jinkEvery * (0.7 + rng() * 0.6);
-      bandit.jinkYaw = (rng() - 0.5) * (wave === 1 ? 10 : 18);
-      bandit.jinkPitch = rng() * (wave === 1 ? 5 : 8);
+      bandit.jinkYaw = (rng() - 0.5) * (wave === 1 ? 2 : 4);
+      bandit.jinkPitch = rng() * (wave === 1 ? 1.2 : 2);
       bandit.jinkAge = 0.45;
     }
 
@@ -580,14 +581,10 @@
         vertAxis = "GRAV";
       } else {
         horizAxis = "A";
-        vertAxis = "G";
+        vertAxis = "-G";
       }
       nextYaw = dA;
-      nextPitch = dG;
-      if (gotMotion && (rawYawRate || rawRollRate)) {
-        nextYaw = COMPLEMENT * (lookYawDeg + rawYawRate * dt) + (1 - COMPLEMENT) * dA;
-        nextPitch = COMPLEMENT * (lookPitchDeg + rawRollRate * dt) + (1 - COMPLEMENT) * dG;
-      }
+      nextPitch = PITCH_SIGN * dG;
     }
 
     var held = clampLook(nextYaw, nextPitch);
