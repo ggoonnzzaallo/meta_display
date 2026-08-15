@@ -10,10 +10,10 @@
   };
 
   var SIZE = 600;
-  var YAW_MIN = -8;
-  var YAW_MAX = 8;
+  var YAW_MIN = -24;
+  var YAW_MAX = 24;
   var PITCH_MIN = 1;
-  var PITCH_MAX = 10;
+  var PITCH_MAX = 12;
   var PX_PER_DEG = 16;
   var PITCH_SIGN = -1;
   var LOOK_SCALE = 0.3;
@@ -470,11 +470,11 @@
       pattern: pattern,
       secondary: !easy && wave > 2 && rng() > 0.45,
       t: 0,
-      cyaw: (rng() - 0.5) * (easy ? 4 : 8),
+      cyaw: (rng() - 0.5) * (easy ? 16 : 28),
       cpitch: easy ? 3.5 + rng() * 2 : 4 + rng() * 3,
       yaw: 0,
       pitch: 5,
-      ryaw: easy ? 1.2 + rng() * 1.2 : 2 + rng() * 2,
+      ryaw: easy ? 6 + rng() * 5 : 8 + rng() * 8,
       rpitch: easy ? 0.6 + rng() * 0.6 : 1 + rng() * 1.2,
       phase: rng() * Math.PI * 2,
       speed: easy ? 0.28 : 0.28 + (wave - 1) * 0.1,
@@ -529,7 +529,7 @@
             bandit.hoverT = 0;
             bandit.dash = 0.32;
             bandit.dashDir = rng() > 0.5 ? 1 : -1;
-            bandit.cyaw = clamp(bandit.cyaw + bandit.dashDir * 2, YAW_MIN + 2, YAW_MAX - 2);
+            bandit.cyaw = clamp(bandit.cyaw + bandit.dashDir * 8, YAW_MIN + 4, YAW_MAX - 4);
           }
         }
         break;
@@ -547,7 +547,7 @@
 
     if (bandit.jinkTimer <= 0) {
       bandit.jinkTimer = bandit.jinkEvery * (0.7 + rng() * 0.6);
-      bandit.jinkYaw = (rng() - 0.5) * (wave === 1 ? 2 : 4);
+      bandit.jinkYaw = (rng() - 0.5) * (wave === 1 ? 8 : 14);
       bandit.jinkPitch = rng() * (wave === 1 ? 1.2 : 2);
       bandit.jinkAge = 0.45;
     }
@@ -565,7 +565,7 @@
     if (!bandit) return { x: 300, y: 300 };
     return {
       x: 300 + (bandit.yaw - lookYawDeg) * PX_PER_DEG,
-      y: 300 - (bandit.pitch - lookPitchDeg) * PX_PER_DEG,
+      y: 300 + (bandit.pitch - lookPitchDeg) * PX_PER_DEG,
     };
   }
 
