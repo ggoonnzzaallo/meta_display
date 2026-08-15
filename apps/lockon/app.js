@@ -9,26 +9,26 @@
     SELECT: "Enter",
   };
 
-  var BUILD = "v24";
+  var BUILD = "v25";
   var SIZE = 600;
-  var YAW_MIN = -24;
-  var YAW_MAX = 24;
-  var PITCH_MIN = 1;
-  var PITCH_MAX = 12;
+  var YAW_MIN = -10;
+  var YAW_MAX = 10;
+  var PITCH_MIN = 2;
+  var PITCH_MAX = 9;
   var PX_PER_DEG = 16;
   var PITCH_SIGN = 1;
-  var LOOK_SCALE = 1;
+  var LOOK_SCALE = 1.35;
   var SPIKE_DEG = 28;
   var PITCH_SMOOTH = 0.16;
-  var HEAD_YAW_MAX = 90;
-  var HEAD_PITCH_MIN = -80;
-  var HEAD_PITCH_MAX = 80;
+  var HEAD_YAW_MAX = 16;
+  var HEAD_PITCH_MIN = -8;
+  var HEAD_PITCH_MAX = 14;
   var LOCK_FILL = 0.4;
   var LOCK_DECAY = 0.7;
   var BOOM_TIME = 0.85;
   var LOST_CONTACT = 5;
   var SPAWN_GRACE = 1.2;
-  var BASE_RADIUS = 78;
+  var BASE_RADIUS = 88;
   var DEMO_LOOK_SPEED = 18;
   var BEST_KEY = "lockon-best";
   var SAMPLE_MAX = 16;
@@ -542,12 +542,12 @@
   }
 
   var HOLDS = [
-    { name: "CENTER", yaw: 0, pitch: 6 },
-    { name: "RIGHT", yaw: 16, pitch: 6 },
-    { name: "LEFT", yaw: -16, pitch: 6 },
-    { name: "UP", yaw: 0, pitch: 12 },
-    { name: "UP-R", yaw: 14, pitch: 10 },
-    { name: "UP-L", yaw: -14, pitch: 10 },
+    { name: "CENTER", yaw: 0, pitch: 5 },
+    { name: "RIGHT", yaw: 7, pitch: 5 },
+    { name: "LEFT", yaw: -7, pitch: 5 },
+    { name: "UP", yaw: 0, pitch: 8 },
+    { name: "UP-R", yaw: 6, pitch: 7 },
+    { name: "UP-L", yaw: -6, pitch: 7 },
   ];
 
   function spawnBandit() {
