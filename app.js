@@ -13,6 +13,7 @@
     { name: "Situation", href: "apps/situation/" },
     { name: "Markets", href: "apps/markets/" },
     { name: "Lock On", href: "apps/lockon/" },
+    { name: "Strike", href: "apps/strike/" },
     { name: "Starter", href: "apps/starter/" },
   ];
 
