@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=600, height=600, initial-scale=1.0, user-scalable=no">
-  <meta name="description" content="Look to lock, pinch to fire a cartoon missile. Three shots, then reload.">
+  <meta name="description" content="See-through HUD: look at the real world, pinch to fire. Three shots, then reload.">
   <meta name="mrbd-web-app-capable" content="yes">
   <title>STRIKE</title>
   <link rel="icon" href="favicon.png" sizes="128x128" type="image/png">
@@ -14,7 +14,7 @@
   <div id="app">
     <section id="home" class="screen" aria-label="STRIKE title">
       <div class="title-block">
-        <p class="title-tag">LOCK · FIRE · RELOAD</p>
+        <p class="title-tag">LOOK · FIRE · RELOAD</p>
         <h1>STRIKE</h1>
         <p id="best-readout" class="best-readout">BEST 00000</p>
       </div>
@@ -30,22 +30,11 @@
       </header>
       <div class="content">
         <ul class="facts">
-          <li>Look at the bandit to lock it in the pipper.</li>
-          <li>Pinch or Enter fires a missile. Lock to home.</li>
+          <li>Look at something in the world. The pipper is your aim.</li>
+          <li>Pinch or Enter fires a missile at that spot.</li>
           <li>Three shots, then Enter reloads. Escape pauses.</li>
         </ul>
         <button class="focusable" data-action="home">BACK</button>
-      </div>
-    </section>
-
-    <section id="calibrate" class="screen hidden" aria-label="Calibrate">
-      <header class="header">
-        <h1>CALIBRATE</h1>
-      </header>
-      <div class="content">
-        <p id="calibrate-copy" class="lede">Move your head. Numbers should change. Then look forward and Enter.</p>
-        <pre id="sensor-debug" class="sensor-debug">WAITING FOR IMU…</pre>
-        <button class="focusable" data-action="calibrate">ENTER</button>
       </div>
     </section>
 
@@ -58,17 +47,6 @@
           <button class="focusable" data-action="resume">RESUME</button>
           <button class="focusable" data-action="quit">QUIT</button>
         </div>
-      </div>
-    </section>
-
-    <section id="over" class="screen hidden" aria-label="Contact lost">
-      <header class="header">
-        <h1>CONTACT LOST</h1>
-      </header>
-      <div class="content">
-        <p id="over-stats" class="over-stats">SCORE 00000<br>WAVE 01<br>BEST 00000</p>
-        <button class="focusable" data-action="again">AGAIN</button>
-        <button class="focusable" data-action="home">HOME</button>
       </div>
     </section>
   </div>

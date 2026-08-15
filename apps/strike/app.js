@@ -11,25 +11,14 @@
   };
 
   var SIZE = 600;
-  var TARGET_PAD_X = 48;
-  var TARGET_TOP = 108;
-  var TARGET_BOTTOM = 72;
-  var SENSITIVITY = 14;
-  var COMPLEMENT = 0.9;
-  var LOCK_FILL = 2.5;
-  var LOCK_DECAY = 0.4;
-  var LOST_CONTACT = 5;
-  var SPAWN_GRACE = 1.2;
-  var BASE_RADIUS = 64;
-  var DEMO_LOOK_SPEED = 90;
+  var AIM_X = 300;
+  var AIM_Y = 300;
   var BEST_KEY = "strike-best";
-  var SAMPLE_MAX = 16;
   var MAX_AMMO = 3;
   var RELOAD_S = 1.2;
   var MAX_PARTICLES = 24;
   var MAX_TRAIL = 8;
 
-  var GREEN = "#00FF88";
   var AMBER = "#FFB000";
   var ORANGE = "#FF6B35";
   var RED = "#FF3333";
@@ -45,79 +34,19 @@
   var fireBtn = document.getElementById("fire-btn");
   var pauseOverlay = document.getElementById("pause-overlay");
   var bestReadout = document.getElementById("best-readout");
-  var calibrateCopy = document.getElementById("calibrate-copy");
-  var sensorDebug = document.getElementById("sensor-debug");
-  var overStats = document.getElementById("over-stats");
-
-  var keys = {
-    ArrowUp: false,
-    ArrowDown: false,
-    ArrowLeft: false,
-    ArrowRight: false,
-  };
-
-  var demoMode = true;
-  var gotOrientation = false;
-  var gotMotion = false;
-  var gotGravity = false;
-  var orientationListening = false;
-  var motionListening = false;
-  var rawAlpha = 0;
-  var rawBeta = 0;
-  var rawGamma = 0;
-  var rawYawRate = 0;
-  var rawPitchRate = 0;
-  var rawRollRate = 0;
-  var rawAx = 0;
-  var rawAy = 0;
-  var rawAz = 0;
-  var gravPitch = 0;
-  var gravRoll = 0;
-  var alpha0 = 0;
-  var beta0 = 0;
-  var gamma0 = 0;
-  var gravPitch0 = 0;
-  var gravRoll0 = 0;
-  var sampleAlpha = [];
-  var sampleBeta = [];
-  var sampleGamma = [];
-  var orientHits = 0;
-  var motionHits = 0;
-  var orientTotal = 0;
-  var motionTotal = 0;
-  var orientHz = 0;
-  var motionHz = 0;
-  var hzStamp = 0;
-  var debugRaf = 0;
-  var horizAxis = "A+G";
-
-  var lookYawDeg = 0;
-  var lookPitchDeg = 0;
-  var lookX = 0;
-  var lookY = 0;
-  var euroX = null;
-  var euroY = null;
 
   var running = false;
   var paused = false;
   var rafId = 0;
   var lastTs = 0;
 
-  var rng = Math.random;
-  var wave = 1;
   var score = 0;
   var best = 0;
-  var lockMeter = 0;
-  var unlockedTime = 0;
-  var grace = 0;
-  var locked = false;
   var killFlash = 0;
-  var bandit = null;
   var ammo = MAX_AMMO;
   var reloadT = 0;
   var missiles = [];
   var particles = [];
-  var lockBeepT = 0;
   var audioCtx = null;
   var fireLockAt = 0;
 
@@ -127,158 +56,8 @@
     return s;
   }
 
-  function clamp(v, lo, hi) {
-    return v < lo ? lo : v > hi ? hi : v;
-  }
-
   function hypot(ax, ay) {
     return Math.sqrt(ax * ax + ay * ay);
-  }
-
-  function wrapDelta(a, b) {
-    var d = a - b;
-    while (d > 180) d -= 360;
-    while (d < -180) d += 360;
-    return d;
-  }
-
-  function meanAngle(values) {
-    if (!values.length) return 0;
-    var x = 0;
-    var y = 0;
-    var i;
-    for (i = 0; i < values.length; i++) {
-      var rad = (values[i] * Math.PI) / 180;
-      x += Math.cos(rad);
-      y += Math.sin(rad);
-    }
-    return (Math.atan2(y / values.length, x / values.length) * 180) / Math.PI;
-  }
-
-  function mulberry32(seed) {
-    var a = seed >>> 0;
-    return function () {
-      a |= 0;
-      a = (a + 0x6d2b79f5) | 0;
-      var t = Math.imul(a ^ (a >>> 15), 1 | a);
-      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-    };
-  }
-
-  function createEuro(minCutoff, beta) {
-    return {
-      minCutoff: minCutoff,
-      beta: beta,
-      dcutoff: 1,
-      x: null,
-      dx: 0,
-    };
-  }
-
-  function euroAlpha(dt, cutoff) {
-    var tau = 1 / (2 * Math.PI * cutoff);
-    return 1 / (1 + tau / dt);
-  }
-
-  function filterEuro(filter, value, dt) {
-    if (dt <= 0) return filter.x == null ? value : filter.x;
-    if (filter.x == null) {
-      filter.x = value;
-      filter.dx = 0;
-      return value;
-    }
-    var edx = (value - filter.x) / dt;
-    var ad = euroAlpha(dt, filter.dcutoff);
-    filter.dx = ad * edx + (1 - ad) * filter.dx;
-    var cutoff = filter.minCutoff + filter.beta * Math.abs(filter.dx);
-    var a = euroAlpha(dt, cutoff);
-    filter.x = a * value + (1 - a) * filter.x;
-    return filter.x;
-  }
-
-  function resetLookFilters() {
-    euroX = createEuro(1.2, 0.04);
-    euroY = createEuro(1.2, 0.04);
-    lookYawDeg = 0;
-    lookPitchDeg = 0;
-    lookX = 0;
-    lookY = 0;
-  }
-
-  function fmt(n) {
-    if (n == null || !isFinite(n)) return "  —  ";
-    var s = (Math.round(n * 10) / 10).toFixed(1);
-    if (n >= 0) s = "+" + s;
-    return s;
-  }
-
-  function sampleRange(values) {
-    if (values.length < 2) return 0;
-    var min = values[0];
-    var max = values[0];
-    var i;
-    for (i = 1; i < values.length; i++) {
-      if (values[i] < min) min = values[i];
-      if (values[i] > max) max = values[i];
-    }
-    return max - min;
-  }
-
-  function refreshHz(now) {
-    if (!hzStamp) hzStamp = now;
-    if (now - hzStamp < 1000) return;
-    orientHz = orientHits;
-    motionHz = motionHits;
-    orientHits = 0;
-    motionHits = 0;
-    hzStamp = now;
-  }
-
-  function debugText() {
-    return [
-      (demoMode ? "DEMO" : "LIVE") +
-        "  O:" +
-        orientHz +
-        "Hz/" +
-        orientTotal +
-        "  M:" +
-        motionHz +
-        "Hz/" +
-        motionTotal,
-      "A " + fmt(rawAlpha) + "  B " + fmt(rawBeta) + "  G " + fmt(rawGamma),
-      "dA " +
-        fmt(wrapDelta(rawAlpha, alpha0)) +
-        "  dB " +
-        fmt(wrapDelta(rawBeta, beta0)) +
-        "  dG " +
-        fmt(wrapDelta(rawGamma, gamma0)),
-      "yaw " +
-        fmt(lookYawDeg) +
-        "  pit " +
-        fmt(lookPitchDeg) +
-        "  look " +
-        Math.round(lookX) +
-        "," +
-        Math.round(lookY),
-      "X:" +
-        horizAxis +
-        "  gyro:" +
-        (gotMotion ? "Y" : "N") +
-        "  grav:" +
-        (gotGravity ? "Y" : "N") +
-        "  rng A" +
-        Math.round(sampleRange(sampleAlpha)) +
-        " B" +
-        Math.round(sampleRange(sampleBeta)) +
-        " G" +
-        Math.round(sampleRange(sampleGamma)),
-      "ax " + fmt(rawAx) + "  ay " + fmt(rawAy) + "  az " + fmt(rawAz),
-    ].join("\n");
-  }
-
-  function paintCalibrateDebug() {
-    if (sensorDebug) sensorDebug.textContent = debugText();
   }
 
   function readBest() {
@@ -357,104 +136,6 @@
     focusables[next].focus();
   }
 
-  function pushSample(list, value) {
-    list.push(value);
-    if (list.length > SAMPLE_MAX) list.shift();
-  }
-
-  function onOrient(event) {
-    if (event.alpha == null && event.beta == null && event.gamma == null) return;
-    gotOrientation = true;
-    orientHits += 1;
-    orientTotal += 1;
-    if (event.alpha != null) {
-      rawAlpha = event.alpha;
-      pushSample(sampleAlpha, rawAlpha);
-    }
-    if (event.beta != null) {
-      rawBeta = event.beta;
-      pushSample(sampleBeta, rawBeta);
-    }
-    if (event.gamma != null) {
-      rawGamma = event.gamma;
-      pushSample(sampleGamma, rawGamma);
-    }
-  }
-
-  function onMotion(event) {
-    motionHits += 1;
-    motionTotal += 1;
-    var accel = event.accelerationIncludingGravity;
-    if (accel && (accel.x != null || accel.y != null || accel.z != null)) {
-      gotGravity = true;
-      rawAx = accel.x || 0;
-      rawAy = accel.y || 0;
-      rawAz = accel.z || 0;
-      gravPitch = (Math.atan2(-rawAx, Math.sqrt(rawAy * rawAy + rawAz * rawAz)) * 180) / Math.PI;
-      gravRoll = (Math.atan2(rawAy, rawAz) * 180) / Math.PI;
-    }
-    if (!event.rotationRate) return;
-    var rate = event.rotationRate;
-    if (rate.alpha == null && rate.beta == null && rate.gamma == null) return;
-    gotMotion = true;
-    rawYawRate = rate.alpha || 0;
-    rawPitchRate = rate.beta || 0;
-    rawRollRate = rate.gamma || 0;
-  }
-
-  function startSensors() {
-    if (!orientationListening) {
-      window.addEventListener("deviceorientation", onOrient);
-      window.addEventListener("deviceorientationabsolute", onOrient);
-      orientationListening = true;
-    }
-    if (!motionListening) {
-      window.addEventListener("devicemotion", onMotion);
-      motionListening = true;
-    }
-  }
-
-  function stopSensors() {
-    if (orientationListening) {
-      window.removeEventListener("deviceorientation", onOrient);
-      window.removeEventListener("deviceorientationabsolute", onOrient);
-      orientationListening = false;
-    }
-    if (motionListening) {
-      window.removeEventListener("devicemotion", onMotion);
-      motionListening = false;
-    }
-    rawYawRate = 0;
-    rawPitchRate = 0;
-    rawRollRate = 0;
-  }
-
-  function requestPerm(api) {
-    if (typeof api === "undefined" || api === null) {
-      return Promise.resolve(false);
-    }
-    if (typeof api.requestPermission !== "function") {
-      return Promise.resolve(true);
-    }
-    return api.requestPermission().then(
-      function (state) {
-        return state === "granted";
-      },
-      function () {
-        return false;
-      }
-    );
-  }
-
-  function requestSensors() {
-    return Promise.all([
-      requestPerm(typeof DeviceOrientationEvent !== "undefined" ? DeviceOrientationEvent : null),
-      requestPerm(typeof DeviceMotionEvent !== "undefined" ? DeviceMotionEvent : null),
-    ]).then(function (pair) {
-      return pair[0] || pair[1];
-    });
-  }
-
   function ensureAudio() {
     var AC = window.AudioContext || window.webkitAudioContext;
     if (!AC) return null;
@@ -517,9 +198,6 @@
         tone(90, 0.28, "triangle", 0.16, 40);
         noiseBurst(0.32, 0.2, 700);
         break;
-      case "miss":
-        tone(420, 0.08, "square", 0.06, 180);
-        break;
       case "empty":
         tone(140, 0.06, "square", 0.05);
         break;
@@ -534,177 +212,21 @@
     }
   }
 
-  function updateLockTone(dt) {
-    if (!running || paused || !locked) {
-      lockBeepT = 0;
-      return;
-    }
-    lockBeepT -= dt;
-    if (lockBeepT > 0) return;
-    lockBeepT = 0.32;
-    tone(620 + lockMeter * 260, 0.07, "sine", 0.045);
-  }
-
-  function lockRadius() {
-    if (wave <= 3) return BASE_RADIUS;
-    return Math.max(46, BASE_RADIUS - (wave - 3) * 2);
-  }
-
-  function spawnBandit() {
-    var patterns = ["orbit", "figure8", "zigzag", "hoverdash", "spiral"];
-    var pattern = patterns[Math.floor(rng() * patterns.length)];
-    bandit = {
-      pattern: pattern,
-      secondary: rng() > 0.5,
-      t: 0,
-      cx: 220 + rng() * 160,
-      cy: 250 + rng() * 140,
-      x: 300,
-      y: 320,
-      rx: 70 + rng() * 80,
-      ry: 50 + rng() * 55,
-      phase: rng() * Math.PI * 2,
-      speed: 1.05 + wave * 0.16,
-      jinkEvery: Math.max(0.9, 3.8 - wave * 0.28),
-      jinkTimer: 1.1 + rng() * 1.4,
-      jinkX: 0,
-      jinkY: 0,
-      jinkAge: 0,
-      dash: 0,
-      dashDir: 1,
-      hoverT: 0,
-    };
-    lockMeter = 0;
-    unlockedTime = 0;
-    grace = SPAWN_GRACE;
-    locked = false;
-  }
-
-  function updateBandit(dt) {
-    if (!bandit) return;
-    bandit.t += dt * bandit.speed;
-    bandit.jinkTimer -= dt;
-    bandit.jinkAge = Math.max(0, bandit.jinkAge - dt);
-
-    var t = bandit.t + bandit.phase;
-    var x = bandit.cx;
-    var y = bandit.cy;
-
-    switch (bandit.pattern) {
-      case "orbit":
-        x = bandit.cx + Math.cos(t) * bandit.rx;
-        y = bandit.cy + Math.sin(t) * bandit.ry;
-        break;
-      case "figure8":
-        x = bandit.cx + Math.sin(t) * bandit.rx;
-        y = bandit.cy + Math.sin(t * 2) * bandit.ry * 0.7;
-        break;
-      case "zigzag":
-        x = bandit.cx + Math.sin(t * 2.4) * bandit.rx;
-        y = bandit.cy + (Math.asin(Math.sin(t * 1.3)) / (Math.PI / 2)) * bandit.ry;
-        break;
-      case "hoverdash":
-        bandit.hoverT += dt;
-        if (bandit.dash > 0) {
-          bandit.dash -= dt;
-          x = bandit.cx + bandit.dashDir * (1 - Math.max(0, bandit.dash) / 0.32) * bandit.rx;
-          y = bandit.cy + Math.sin(t * 0.8) * 18;
-        } else {
-          x = bandit.cx + Math.sin(t * 0.35) * 14;
-          y = bandit.cy + Math.cos(t * 0.4) * 14;
-          if (bandit.hoverT > 0.95) {
-            bandit.hoverT = 0;
-            bandit.dash = 0.32;
-            bandit.dashDir = rng() > 0.5 ? 1 : -1;
-            bandit.cx = clamp(bandit.cx + bandit.dashDir * 36, 160, 440);
-          }
-        }
-        break;
-      default:
-        var r = 40 + (Math.sin(t * 0.35) * 0.5 + 0.5) * Math.min(bandit.rx, 110);
-        x = bandit.cx + Math.cos(t * 1.4) * r;
-        y = bandit.cy + Math.sin(t * 1.4) * r * 0.75;
-        break;
-    }
-
-    if (bandit.secondary) {
-      x += Math.sin(t * 0.55) * 18;
-      y += Math.cos(t * 0.4) * 14;
-    }
-
-    if (bandit.jinkTimer <= 0) {
-      bandit.jinkTimer = bandit.jinkEvery * (0.7 + rng() * 0.6);
-      bandit.jinkX = (rng() - 0.5) * 140;
-      bandit.jinkY = (rng() - 0.5) * 110;
-      bandit.jinkAge = 0.45;
-    }
-
-    var jAmt = bandit.jinkAge / 0.45;
-    x += bandit.jinkX * jAmt;
-    y += bandit.jinkY * jAmt;
-
-    bandit.x = clamp(x, TARGET_PAD_X, SIZE - TARGET_PAD_X);
-    bandit.y = clamp(y, TARGET_TOP, SIZE - TARGET_BOTTOM);
-  }
-
-  function banditScreen() {
-    if (!bandit) return { x: 300, y: 320 };
-    return { x: bandit.x - lookX, y: bandit.y - lookY };
-  }
-
-  function updateLook(dt) {
-    if (demoMode) {
-      if (keys.ArrowLeft) lookYawDeg -= DEMO_LOOK_SPEED * dt;
-      if (keys.ArrowRight) lookYawDeg += DEMO_LOOK_SPEED * dt;
-      if (keys.ArrowUp) lookPitchDeg -= DEMO_LOOK_SPEED * dt;
-      if (keys.ArrowDown) lookPitchDeg += DEMO_LOOK_SPEED * dt;
-      lookYawDeg = clamp(lookYawDeg, -28, 28);
-      lookPitchDeg = clamp(lookPitchDeg, -28, 28);
-      horizAxis = "DEMO";
-    } else {
-      var dA = wrapDelta(rawAlpha, alpha0);
-      var dB = wrapDelta(rawBeta, beta0);
-      var dG = wrapDelta(rawGamma, gamma0);
-      if (!gotOrientation && gotGravity) {
-        dB = gravPitch - gravPitch0;
-        dG = gravRoll - gravRoll0;
-        horizAxis = "GRAV";
-      } else {
-        horizAxis = "A+G";
-      }
-      var orientYaw = dA + dG;
-      var orientPitch = dB;
-      if (gotMotion && (rawYawRate || rawPitchRate || rawRollRate)) {
-        lookYawDeg =
-          COMPLEMENT * (lookYawDeg + (rawYawRate + rawRollRate) * dt) +
-          (1 - COMPLEMENT) * orientYaw;
-        lookPitchDeg =
-          COMPLEMENT * (lookPitchDeg + rawPitchRate * dt) + (1 - COMPLEMENT) * orientPitch;
-      } else {
-        lookYawDeg = orientYaw;
-        lookPitchDeg = orientPitch;
-      }
-    }
-
-    lookX = filterEuro(euroX, lookYawDeg * SENSITIVITY, dt);
-    lookY = filterEuro(euroY, lookPitchDeg * SENSITIVITY, dt);
-  }
-
   function burst(x, y, colors, count, big) {
     var i;
     for (i = 0; i < count && particles.length < MAX_PARTICLES; i++) {
-      var a = rng() * Math.PI * 2;
-      var sp = 50 + rng() * (big ? 240 : 130);
+      var a = Math.random() * Math.PI * 2;
+      var sp = 50 + Math.random() * (big ? 240 : 130);
       particles.push({
         x: x,
         y: y,
         vx: Math.cos(a) * sp,
         vy: Math.sin(a) * sp,
-        life: 0.22 + rng() * 0.2,
+        life: 0.22 + Math.random() * 0.2,
         age: 0,
-        r: (big ? 7 : 4) + rng() * 8,
-        color: colors[Math.floor(rng() * colors.length)],
-        kind: rng() > 0.45 ? "star" : "ring",
+        r: (big ? 7 : 4) + Math.random() * 8,
+        color: colors[Math.floor(Math.random() * colors.length)],
+        kind: Math.random() > 0.45 ? "star" : "ring",
       });
     }
   }
@@ -713,33 +235,20 @@
     burst(x, y, [GOLD, ORANGE, CREAM, RED], 14, true);
     playSfx("boom");
     killFlash = 0.4;
-  }
-
-  function explodeMiss(x, y) {
-    burst(x, y, [CYAN, CREAM, AMBER], 8, false);
-    playSfx("miss");
-  }
-
-  function killBandit() {
-    var bonus = Math.round((1 - unlockedTime / LOST_CONTACT) * 20);
-    score += 100 * wave + bonus;
+    score += 1;
     if (score > best) {
       best = score;
       writeBest(best);
     }
-    wave += 1;
-    missiles = [];
-    spawnBandit();
   }
 
-  function spawnMissile(homing) {
+  function spawnMissile() {
     missiles.push({
-      x: 300,
+      x: AIM_X,
       y: 548,
       vx: 0,
-      vy: -460,
-      homing: homing,
-      life: homing ? 1.35 : 0.52,
+      vy: -520,
+      life: 0.7,
       trail: [],
     });
   }
@@ -760,7 +269,7 @@
       return;
     }
     ammo -= 1;
-    spawnMissile(locked);
+    spawnMissile();
     playSfx("launch");
   }
 
@@ -770,34 +279,22 @@
     for (i = 0; i < missiles.length; i++) {
       var m = missiles[i];
       m.life -= dt;
-      if (m.homing && bandit) {
-        var s = banditScreen();
-        var dx = s.x - m.x;
-        var dy = s.y - m.y;
-        var d = hypot(dx, dy) || 1;
-        var speed = 500;
-        m.vx = (dx / d) * speed;
-        m.vy = (dy / d) * speed;
-        m.x += m.vx * dt;
-        m.y += m.vy * dt;
-        m.trail.push({ x: m.x, y: m.y });
-        if (m.trail.length > MAX_TRAIL) m.trail.shift();
-        if (d < 30) {
-          explodeHit(s.x, s.y);
-          killBandit();
-          return;
-        }
-        if (m.life > 0) next.push(m);
-        else explodeMiss(m.x, m.y);
-      } else {
-        m.vy = -540;
-        m.x += m.vx * dt;
-        m.y += m.vy * dt;
-        m.trail.push({ x: m.x, y: m.y });
-        if (m.trail.length > MAX_TRAIL) m.trail.shift();
-        if (m.y < 170 || m.life <= 0) explodeMiss(m.x, m.y);
-        else next.push(m);
+      var dx = AIM_X - m.x;
+      var dy = AIM_Y - m.y;
+      var d = hypot(dx, dy) || 1;
+      var speed = 560;
+      m.vx = (dx / d) * speed;
+      m.vy = (dy / d) * speed;
+      m.x += m.vx * dt;
+      m.y += m.vy * dt;
+      m.trail.push({ x: m.x, y: m.y });
+      if (m.trail.length > MAX_TRAIL) m.trail.shift();
+      if (d < 22) {
+        explodeHit(AIM_X, AIM_Y);
+        continue;
       }
+      if (m.life > 0) next.push(m);
+      else explodeHit(m.x, m.y);
     }
     missiles = next;
   }
@@ -818,25 +315,7 @@
     particles = next;
   }
 
-  function finishRun() {
-    stopLoop();
-    stopSensors();
-    muteAudio();
-    if (score > best) {
-      best = score;
-      writeBest(best);
-    }
-    updateBestReadout();
-    if (overStats) {
-      overStats.innerHTML =
-        "SCORE " + pad(score, 5) + "<br>WAVE " + pad(wave, 2) + "<br>BEST " + pad(best, 5);
-    }
-    navigateTo("over");
-  }
-
   function updateSim(dt) {
-    if (!bandit) return;
-    updateBandit(dt);
     killFlash = Math.max(0, killFlash - dt);
     if (reloadT > 0) {
       reloadT -= dt;
@@ -845,31 +324,8 @@
         ammo = MAX_AMMO;
       }
     }
-
-    var screen = banditScreen();
-    var radius = lockRadius();
-    var dist = hypot(300 - screen.x, 300 - screen.y);
-    locked = dist < radius;
-
-    if (grace > 0) {
-      grace -= dt;
-      if (locked) lockMeter = Math.min(1, lockMeter + dt / LOCK_FILL);
-      else lockMeter = Math.max(0, lockMeter - dt * LOCK_DECAY);
-    } else if (locked) {
-      lockMeter = Math.min(1, lockMeter + dt / LOCK_FILL);
-      unlockedTime = 0;
-    } else {
-      lockMeter = Math.max(0, lockMeter - dt * LOCK_DECAY);
-      unlockedTime += dt;
-      if (unlockedTime >= LOST_CONTACT) {
-        finishRun();
-        return;
-      }
-    }
-
     updateMissiles(dt);
     updateParticles(dt);
-    updateLockTone(dt);
   }
 
   function drawCorners(c) {
@@ -892,7 +348,7 @@
   }
 
   function drawLockBox(c, x, y, half) {
-    var corner = 11;
+    var corner = 14;
     c.beginPath();
     c.moveTo(x - half, y - half + corner);
     c.lineTo(x - half, y - half);
@@ -910,9 +366,9 @@
   }
 
   function drawPipper(c) {
-    var x = 300;
-    var y = 300;
-    c.strokeStyle = CYAN;
+    var x = AIM_X;
+    var y = AIM_Y;
+    c.strokeStyle = killFlash > 0 ? RED : CYAN;
     c.lineWidth = 2;
     c.beginPath();
     c.arc(x, y, 16, 0, Math.PI * 2);
@@ -927,78 +383,8 @@
     c.moveTo(x, y + 8);
     c.lineTo(x, y + 26);
     c.stroke();
-    c.fillStyle = CYAN;
+    c.fillStyle = killFlash > 0 ? RED : CYAN;
     c.fillRect(x - 1.5, y - 1.5, 3, 3);
-  }
-
-  function drawOffscreenCue(c, sx, sy) {
-    var mx = clamp(sx, 36, SIZE - 36);
-    var my = clamp(sy, 100, SIZE - 36);
-    var dx = sx - 300;
-    var dy = sy - 300;
-    var len = hypot(dx, dy) || 1;
-    c.strokeStyle = AMBER;
-    c.lineWidth = 2;
-    c.beginPath();
-    c.moveTo(mx - (dx / len) * 10, my - (dy / len) * 10);
-    c.lineTo(mx, my);
-    c.lineTo(mx - (dx / len) * 10 + (-dy / len) * 6, my - (dy / len) * 10 + (dx / len) * 6);
-    c.moveTo(mx, my);
-    c.lineTo(mx - (dx / len) * 10 - (-dy / len) * 6, my - (dy / len) * 10 - (dx / len) * 6);
-    c.stroke();
-  }
-
-  function roundRect(c, x, y, w, h, r) {
-    c.beginPath();
-    c.moveTo(x + r, y);
-    c.arcTo(x + w, y, x + w, y + h, r);
-    c.arcTo(x + w, y + h, x, y + h, r);
-    c.arcTo(x, y + h, x, y, r);
-    c.arcTo(x, y, x + w, y, r);
-    c.closePath();
-  }
-
-  function drawBandit(c, x, y, hot) {
-    var spin = (performance.now() / 140) % (Math.PI * 2);
-    c.save();
-    c.translate(x, y);
-
-    c.fillStyle = hot ? RED : ORANGE;
-    c.beginPath();
-    c.ellipse(-22, -2, 11, 4, 0, 0, Math.PI * 2);
-    c.ellipse(22, -2, 11, 4, 0, 0, Math.PI * 2);
-    c.fill();
-    c.strokeStyle = CREAM;
-    c.lineWidth = 2;
-    c.beginPath();
-    c.arc(-22, -2, 10, spin, spin + Math.PI);
-    c.arc(22, -2, 10, -spin, -spin + Math.PI);
-    c.stroke();
-
-    c.fillStyle = hot ? "#FF6A6A" : "#FF8A4A";
-    roundRect(c, -18, -10, 36, 22, 8);
-    c.fill();
-    c.strokeStyle = BODY;
-    c.lineWidth = 3;
-    c.stroke();
-
-    c.fillStyle = hot ? GOLD : CYAN;
-    c.beginPath();
-    c.ellipse(0, -2, 9, 7, 0, 0, Math.PI * 2);
-    c.fill();
-    c.strokeStyle = CREAM;
-    c.lineWidth = 2;
-    c.stroke();
-
-    c.fillStyle = AMBER;
-    c.beginPath();
-    c.moveTo(-6, 12);
-    c.lineTo(0, 20);
-    c.lineTo(6, 12);
-    c.closePath();
-    c.fill();
-
-    c.restore();
   }
 
   function drawMissileIcon(c, x, y, live, scale) {
@@ -1124,18 +510,12 @@
     ctx.font = "bold 18px ui-monospace, SF Mono, Menlo, Consolas, monospace";
     ctx.fillStyle = ORANGE;
     ctx.textAlign = "left";
-    ctx.fillText("WAVE " + pad(wave, 2), 24, 36);
+    ctx.fillText("STRIKE", 24, 36);
     ctx.textAlign = "right";
-    ctx.fillText("SCORE " + pad(score, 5), 576, 36);
+    ctx.fillText(pad(score, 5), 576, 36);
 
-    if (demoMode) {
-      ctx.textAlign = "center";
-      ctx.fillStyle = AMBER;
-      ctx.fillText("DEMO", 300, 36);
-    }
-
-    var status = "TRACKING";
-    var statusColor = AMBER;
+    var status = "LOCK";
+    var statusColor = RED;
     if (reloadT > 0) {
       status = "RELOAD";
       statusColor = CYAN;
@@ -1145,55 +525,21 @@
     } else if (killFlash > 0) {
       status = "FOX";
       statusColor = RED;
-    } else if (locked) {
-      status = "LOCK";
-      statusColor = RED;
     }
     ctx.fillStyle = statusColor;
     ctx.textAlign = "center";
     ctx.font = "bold 22px ui-monospace, SF Mono, Menlo, Consolas, monospace";
     ctx.fillText(status, 300, 64);
 
-    var barX = 120;
-    var barY = 76;
-    var barW = 360;
-    var barH = 8;
-    ctx.strokeStyle = ORANGE;
+    ctx.strokeStyle = killFlash > 0 ? RED : ORANGE;
     ctx.lineWidth = 2;
-    ctx.strokeRect(barX, barY, barW, barH);
-    ctx.fillStyle = locked || killFlash > 0 ? RED : AMBER;
-    ctx.fillRect(barX + 1, barY + 1, (barW - 2) * clamp(lockMeter, 0, 1), barH - 2);
-
-    if (bandit) {
-      var screen = banditScreen();
-      var onScreen =
-        screen.x > 20 && screen.x < SIZE - 20 && screen.y > 92 && screen.y < SIZE - 20;
-      var radius = lockRadius();
-      var dist = hypot(300 - screen.x, 300 - screen.y);
-      if (onScreen) {
-        drawBandit(ctx, screen.x, screen.y, locked || killFlash > 0);
-        if (dist < radius * 1.65) {
-          ctx.strokeStyle = locked || killFlash > 0 ? RED : GREEN;
-          ctx.lineWidth = 2;
-          drawLockBox(ctx, screen.x, screen.y, 38 + (1 - clamp(lockMeter, 0, 1)) * 8);
-        }
-      } else {
-        drawOffscreenCue(ctx, screen.x, screen.y);
-      }
-    }
+    drawLockBox(ctx, AIM_X, AIM_Y, 48);
 
     var i;
     for (i = 0; i < missiles.length; i++) drawMissile(ctx, missiles[i]);
     drawParticles(ctx);
     drawPipper(ctx);
     drawAmmo(ctx);
-
-    if (!paused && grace <= 0 && unlockedTime > 2.2) {
-      ctx.fillStyle = RED;
-      ctx.font = "bold 16px ui-monospace, SF Mono, Menlo, Consolas, monospace";
-      ctx.textAlign = "center";
-      ctx.fillText("CONTACT " + Math.max(0, LOST_CONTACT - unlockedTime).toFixed(1), 300, 540);
-    }
   }
 
   function tick(now) {
@@ -1201,12 +547,8 @@
     if (!lastTs) lastTs = now;
     var dt = Math.min(0.05, (now - lastTs) / 1000);
     lastTs = now;
-
-    refreshHz(now);
-    updateLook(dt);
     if (!paused) updateSim(dt);
     drawHud();
-
     if (running) rafId = requestAnimationFrame(tick);
   }
 
@@ -1223,86 +565,14 @@
     rafId = 0;
   }
 
-  function resetRunState() {
-    rng = mulberry32(Date.now() >>> 0);
-    wave = 1;
+  function startHunt() {
+    ensureAudio();
     score = 0;
-    lockMeter = 0;
-    unlockedTime = 0;
-    grace = SPAWN_GRACE;
-    locked = false;
     killFlash = 0;
     ammo = MAX_AMMO;
     reloadT = 0;
     missiles = [];
     particles = [];
-    lockBeepT = 0;
-    resetLookFilters();
-    spawnBandit();
-  }
-
-  function stopDebugLoop() {
-    if (debugRaf) cancelAnimationFrame(debugRaf);
-    debugRaf = 0;
-  }
-
-  function startDebugLoop() {
-    if (debugRaf) return;
-    var last = 0;
-    function pulse(now) {
-      if (currentScreen !== "calibrate") {
-        debugRaf = 0;
-        return;
-      }
-      if (!last) last = now;
-      var dt = Math.min(0.05, (now - last) / 1000);
-      last = now;
-      refreshHz(now);
-      updateLook(dt);
-      paintCalibrateDebug();
-      debugRaf = requestAnimationFrame(pulse);
-    }
-    debugRaf = requestAnimationFrame(pulse);
-  }
-
-  function beginSession() {
-    ensureAudio();
-    requestSensors().then(function (ok) {
-      demoMode = !ok;
-      gotOrientation = false;
-      gotMotion = false;
-      gotGravity = false;
-      sampleAlpha = [];
-      sampleBeta = [];
-      sampleGamma = [];
-      orientHits = 0;
-      motionHits = 0;
-      orientTotal = 0;
-      motionTotal = 0;
-      orientHz = 0;
-      motionHz = 0;
-      hzStamp = 0;
-      resetLookFilters();
-      startSensors();
-      if (calibrateCopy) {
-        calibrateCopy.textContent = demoMode
-          ? "DEMO MODE. Arrows look around. Enter to start."
-          : "Move your head. Numbers should change. Then look forward and Enter.";
-      }
-      navigateTo("calibrate");
-      startDebugLoop();
-    });
-  }
-
-  function startHunt() {
-    if (!demoMode && !gotOrientation && !gotMotion && !gotGravity) demoMode = true;
-    alpha0 = sampleAlpha.length ? meanAngle(sampleAlpha) : rawAlpha;
-    beta0 = sampleBeta.length ? meanAngle(sampleBeta) : rawBeta;
-    gamma0 = sampleGamma.length ? meanAngle(sampleGamma) : rawGamma;
-    gravPitch0 = gravPitch;
-    gravRoll0 = gravRoll;
-    stopDebugLoop();
-    resetRunState();
     paused = false;
     pauseOverlay.classList.add("hidden");
     navigateTo("play");
@@ -1328,8 +598,6 @@
 
   function quitToTitle() {
     stopLoop();
-    stopDebugLoop();
-    stopSensors();
     muteAudio();
     paused = false;
     pauseOverlay.classList.add("hidden");
@@ -1346,10 +614,6 @@
         navigateTo("how");
         break;
       case "play":
-      case "again":
-        beginSession();
-        break;
-      case "calibrate":
         startHunt();
         break;
       case "fire":
@@ -1378,11 +642,6 @@
         pauseGame();
         return;
       }
-      if (keys.hasOwnProperty(event.key)) {
-        event.preventDefault();
-        keys[event.key] = true;
-        return;
-      }
       return;
     }
 
@@ -1408,10 +667,6 @@
         return;
     }
     event.preventDefault();
-  });
-
-  document.addEventListener("keyup", function (event) {
-    if (keys.hasOwnProperty(event.key)) keys[event.key] = false;
   });
 
   document.addEventListener("click", function (event) {

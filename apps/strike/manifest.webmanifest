@@ -1,7 +1,7 @@
 {
   "name": "STRIKE",
   "short_name": "Strike",
-  "description": "Look to lock, pinch to fire a cartoon missile. Three shots, then reload.",
+  "description": "See-through HUD: look at the real world, pinch to fire. Three shots, then reload.",
   "icons": [
     { "src": "favicon.png", "sizes": "128x128", "type": "image/png" }
   ],
