@@ -79,7 +79,9 @@
   var motionHz = 0;
   var hzStamp = 0;
   var debugRaf = 0;
-  var horizAxis = "A+G";
+  var horizAxis = "A";
+  var vertAxis = "-G";
+  var zerosSet = false;
 
   var lookYawDeg = 0;
   var lookPitchDeg = 0;
@@ -230,12 +232,15 @@
         "Hz/" +
         motionTotal,
       "A " + fmt(rawAlpha) + "  B " + fmt(rawBeta) + "  G " + fmt(rawGamma),
-      "dA " +
-        fmt(wrapDelta(rawAlpha, alpha0)) +
-        "  dB " +
-        fmt(wrapDelta(rawBeta, beta0)) +
-        "  dG " +
-        fmt(wrapDelta(rawGamma, gamma0)),
+      zerosSet
+        ? "dA " +
+          fmt(wrapDelta(rawAlpha, alpha0)) +
+          "  dB " +
+          fmt(wrapDelta(rawBeta, beta0)) +
+          "  dG " +
+          fmt(wrapDelta(rawGamma, gamma0))
+        : "zero UNSET — d* equals raw until Enter",
+      "zero A " + fmt(alpha0) + "  B " + fmt(beta0) + "  G " + fmt(gamma0),
       "yaw " +
         fmt(lookYawDeg) +
         "  pit " +
@@ -244,18 +249,14 @@
         Math.round(lookX) +
         "," +
         Math.round(lookY),
-      "X:" +
+      "aim X:" +
         horizAxis +
+        " Y:" +
+        vertAxis +
         "  gyro:" +
         (gotMotion ? "Y" : "N") +
         "  grav:" +
-        (gotGravity ? "Y" : "N") +
-        "  rng A" +
-        Math.round(sampleRange(sampleAlpha)) +
-        " B" +
-        Math.round(sampleRange(sampleBeta)) +
-        " G" +
-        Math.round(sampleRange(sampleGamma)),
+        (gotGravity ? "Y" : "N"),
       "ax " + fmt(rawAx) + "  ay " + fmt(rawAy) + "  az " + fmt(rawAz),
     ].join("\n");
   }
@@ -549,25 +550,25 @@
       lookYawDeg = clamp(lookYawDeg, -28, 28);
       lookPitchDeg = clamp(lookPitchDeg, -28, 28);
       horizAxis = "DEMO";
+      vertAxis = "DEMO";
     } else {
       var dA = wrapDelta(rawAlpha, alpha0);
-      var dB = wrapDelta(rawBeta, beta0);
       var dG = wrapDelta(rawGamma, gamma0);
       if (!gotOrientation && gotGravity) {
-        dB = gravPitch - gravPitch0;
-        dG = gravRoll - gravRoll0;
-        horizAxis = "GRAV";
+        dA = gravRoll - gravRoll0;
+        dG = gravPitch - gravPitch0;
+        horizAxis = "GRAV-R";
+        vertAxis = "-GRAV-P";
       } else {
-        horizAxis = "A+G";
+        horizAxis = "A";
+        vertAxis = "-G";
       }
-      var orientYaw = dA + dG;
-      var orientPitch = dB;
-      if (gotMotion && (rawYawRate || rawPitchRate || rawRollRate)) {
-        lookYawDeg =
-          COMPLEMENT * (lookYawDeg + (rawYawRate + rawRollRate) * dt) +
-          (1 - COMPLEMENT) * orientYaw;
+      var orientYaw = dA;
+      var orientPitch = -dG;
+      if (gotMotion && (rawYawRate || rawRollRate)) {
+        lookYawDeg = COMPLEMENT * (lookYawDeg + rawYawRate * dt) + (1 - COMPLEMENT) * orientYaw;
         lookPitchDeg =
-          COMPLEMENT * (lookPitchDeg + rawPitchRate * dt) + (1 - COMPLEMENT) * orientPitch;
+          COMPLEMENT * (lookPitchDeg + -rawRollRate * dt) + (1 - COMPLEMENT) * orientPitch;
       } else {
         lookYawDeg = orientYaw;
         lookPitchDeg = orientPitch;
@@ -911,6 +912,10 @@
       orientHz = 0;
       motionHz = 0;
       hzStamp = 0;
+      zerosSet = false;
+      alpha0 = 0;
+      beta0 = 0;
+      gamma0 = 0;
       resetLookFilters();
       startSensors();
       if (calibrateCopy) {
@@ -923,13 +928,19 @@
     });
   }
 
+  function recentMean(values, fallback) {
+    if (!values.length) return fallback;
+    return meanAngle(values.slice(Math.max(0, values.length - 6)));
+  }
+
   function startHunt() {
     if (!demoMode && !gotOrientation && !gotMotion && !gotGravity) demoMode = true;
-    alpha0 = sampleAlpha.length ? meanAngle(sampleAlpha) : rawAlpha;
-    beta0 = sampleBeta.length ? meanAngle(sampleBeta) : rawBeta;
-    gamma0 = sampleGamma.length ? meanAngle(sampleGamma) : rawGamma;
+    alpha0 = recentMean(sampleAlpha, rawAlpha);
+    beta0 = recentMean(sampleBeta, rawBeta);
+    gamma0 = recentMean(sampleGamma, rawGamma);
     gravPitch0 = gravPitch;
     gravRoll0 = gravRoll;
+    zerosSet = true;
     stopDebugLoop();
     resetRunState();
     paused = false;
