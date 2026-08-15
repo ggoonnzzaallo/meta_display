@@ -15,7 +15,7 @@
   var PITCH_MIN = 1;
   var PITCH_MAX = 10;
   var PX_PER_DEG = 16;
-  var PITCH_SIGN = -1;
+  var PITCH_SIGN = 1;
   var COMPLEMENT = 0.9;
   var LOCK_FILL = 0.4;
   var LOCK_DECAY = 0.7;
@@ -254,7 +254,7 @@
         Math.round(lookYawDeg) +
         "°," +
         Math.round(lookPitchDeg) +
-        "° (pit+ = UP)",
+        "° (pit follows B)",
       "aim X:" +
         horizAxis +
         " Y:" +
@@ -573,26 +573,33 @@
       vertAxis = "DEMO";
     } else {
       var dA = wrapDelta(rawAlpha, alpha0);
-      var dG = wrapDelta(rawGamma, gamma0);
+      var dB = wrapDelta(rawBeta, beta0);
       if (!gotOrientation && gotGravity) {
         dA = gravRoll - gravRoll0;
-        dG = gravPitch - gravPitch0;
+        dB = gravPitch - gravPitch0;
         horizAxis = "GRAV";
         vertAxis = "GRAV";
       } else {
         horizAxis = "A";
-        vertAxis = "-G";
+        vertAxis = "B";
       }
       nextYaw = dA;
-      nextPitch = PITCH_SIGN * dG;
+      nextPitch = PITCH_SIGN * dB;
     }
 
-    var held = clampLook(nextYaw, nextPitch);
-    lookYawDeg = filterEuro(euroX, held.yaw, dt);
-    lookPitchDeg = filterEuro(euroY, held.pitch, dt);
-    held = clampLook(lookYawDeg, lookPitchDeg);
-    lookYawDeg = held.yaw;
-    lookPitchDeg = held.pitch;
+    var clamped;
+    if (zerosSet && currentScreen === "play") {
+      clamped = clampLook(nextYaw, nextPitch);
+      nextYaw = clamped.yaw;
+      nextPitch = clamped.pitch;
+    }
+    lookYawDeg = filterEuro(euroX, nextYaw, dt);
+    lookPitchDeg = filterEuro(euroY, nextPitch, dt);
+    if (zerosSet && currentScreen === "play") {
+      clamped = clampLook(lookYawDeg, lookPitchDeg);
+      lookYawDeg = clamped.yaw;
+      lookPitchDeg = clamped.pitch;
+    }
     lookX = lookYawDeg * PX_PER_DEG;
     lookY = -lookPitchDeg * PX_PER_DEG;
   }
