@@ -36,6 +36,7 @@
   var pauseOverlay = document.getElementById("pause-overlay");
   var bestReadout = document.getElementById("best-readout");
   var calibrateCopy = document.getElementById("calibrate-copy");
+  var sensorDebug = document.getElementById("sensor-debug");
   var overStats = document.getElementById("over-stats");
 
   var keys = {
@@ -48,16 +49,37 @@
   var demoMode = true;
   var gotOrientation = false;
   var gotMotion = false;
+  var gotGravity = false;
   var orientationListening = false;
   var motionListening = false;
   var rawAlpha = 0;
   var rawBeta = 0;
+  var rawGamma = 0;
   var rawYawRate = 0;
   var rawPitchRate = 0;
+  var rawRollRate = 0;
+  var rawAx = 0;
+  var rawAy = 0;
+  var rawAz = 0;
+  var gravPitch = 0;
+  var gravRoll = 0;
   var alpha0 = 0;
   var beta0 = 0;
+  var gamma0 = 0;
+  var gravPitch0 = 0;
+  var gravRoll0 = 0;
   var sampleAlpha = [];
   var sampleBeta = [];
+  var sampleGamma = [];
+  var orientHits = 0;
+  var motionHits = 0;
+  var orientTotal = 0;
+  var motionTotal = 0;
+  var orientHz = 0;
+  var motionHz = 0;
+  var hzStamp = 0;
+  var debugRaf = 0;
+  var horizAxis = "A+G";
 
   var lookYawDeg = 0;
   var lookPitchDeg = 0;
@@ -167,6 +189,81 @@
     lookY = 0;
   }
 
+  function fmt(n) {
+    if (n == null || !isFinite(n)) return "  —  ";
+    var s = (Math.round(n * 10) / 10).toFixed(1);
+    if (n >= 0) s = "+" + s;
+    return s;
+  }
+
+  function sampleRange(values) {
+    if (values.length < 2) return 0;
+    var min = values[0];
+    var max = values[0];
+    var i;
+    for (i = 1; i < values.length; i++) {
+      if (values[i] < min) min = values[i];
+      if (values[i] > max) max = values[i];
+    }
+    return max - min;
+  }
+
+  function refreshHz(now) {
+    if (!hzStamp) hzStamp = now;
+    if (now - hzStamp < 1000) return;
+    orientHz = orientHits;
+    motionHz = motionHits;
+    orientHits = 0;
+    motionHits = 0;
+    hzStamp = now;
+  }
+
+  function debugText() {
+    return [
+      (demoMode ? "DEMO" : "LIVE") +
+        "  O:" +
+        orientHz +
+        "Hz/" +
+        orientTotal +
+        "  M:" +
+        motionHz +
+        "Hz/" +
+        motionTotal,
+      "A " + fmt(rawAlpha) + "  B " + fmt(rawBeta) + "  G " + fmt(rawGamma),
+      "dA " +
+        fmt(wrapDelta(rawAlpha, alpha0)) +
+        "  dB " +
+        fmt(wrapDelta(rawBeta, beta0)) +
+        "  dG " +
+        fmt(wrapDelta(rawGamma, gamma0)),
+      "yaw " +
+        fmt(lookYawDeg) +
+        "  pit " +
+        fmt(lookPitchDeg) +
+        "  look " +
+        Math.round(lookX) +
+        "," +
+        Math.round(lookY),
+      "X:" +
+        horizAxis +
+        "  gyro:" +
+        (gotMotion ? "Y" : "N") +
+        "  grav:" +
+        (gotGravity ? "Y" : "N") +
+        "  rng A" +
+        Math.round(sampleRange(sampleAlpha)) +
+        " B" +
+        Math.round(sampleRange(sampleBeta)) +
+        " G" +
+        Math.round(sampleRange(sampleGamma)),
+      "ax " + fmt(rawAx) + "  ay " + fmt(rawAy) + "  az " + fmt(rawAz),
+    ].join("\n");
+  }
+
+  function paintCalibrateDebug() {
+    if (sensorDebug) sensorDebug.textContent = debugText();
+  }
+
   function readBest() {
     try {
       return parseInt(localStorage.getItem(BEST_KEY) || "0", 10) || 0;
@@ -244,26 +341,49 @@
   }
 
   function onOrient(event) {
-    if (event.alpha == null || event.beta == null) return;
+    if (event.alpha == null && event.beta == null && event.gamma == null) return;
     gotOrientation = true;
-    rawAlpha = event.alpha;
-    rawBeta = event.beta;
-    pushSample(sampleAlpha, rawAlpha);
-    pushSample(sampleBeta, rawBeta);
+    orientHits += 1;
+    orientTotal += 1;
+    if (event.alpha != null) {
+      rawAlpha = event.alpha;
+      pushSample(sampleAlpha, rawAlpha);
+    }
+    if (event.beta != null) {
+      rawBeta = event.beta;
+      pushSample(sampleBeta, rawBeta);
+    }
+    if (event.gamma != null) {
+      rawGamma = event.gamma;
+      pushSample(sampleGamma, rawGamma);
+    }
   }
 
   function onMotion(event) {
+    motionHits += 1;
+    motionTotal += 1;
+    var accel = event.accelerationIncludingGravity;
+    if (accel && (accel.x != null || accel.y != null || accel.z != null)) {
+      gotGravity = true;
+      rawAx = accel.x || 0;
+      rawAy = accel.y || 0;
+      rawAz = accel.z || 0;
+      gravPitch = (Math.atan2(-rawAx, Math.sqrt(rawAy * rawAy + rawAz * rawAz)) * 180) / Math.PI;
+      gravRoll = (Math.atan2(rawAy, rawAz) * 180) / Math.PI;
+    }
     if (!event.rotationRate) return;
     var rate = event.rotationRate;
-    if (rate.alpha == null && rate.beta == null) return;
+    if (rate.alpha == null && rate.beta == null && rate.gamma == null) return;
     gotMotion = true;
     rawYawRate = rate.alpha || 0;
     rawPitchRate = rate.beta || 0;
+    rawRollRate = rate.gamma || 0;
   }
 
   function startSensors() {
     if (!orientationListening) {
       window.addEventListener("deviceorientation", onOrient);
+      window.addEventListener("deviceorientationabsolute", onOrient);
       orientationListening = true;
     }
     if (!motionListening) {
@@ -275,6 +395,7 @@
   function stopSensors() {
     if (orientationListening) {
       window.removeEventListener("deviceorientation", onOrient);
+      window.removeEventListener("deviceorientationabsolute", onOrient);
       orientationListening = false;
     }
     if (motionListening) {
@@ -283,11 +404,15 @@
     }
     rawYawRate = 0;
     rawPitchRate = 0;
+    rawRollRate = 0;
   }
 
   function requestPerm(api) {
-    if (!api || typeof api.requestPermission !== "function") {
-      return Promise.resolve(typeof api !== "undefined");
+    if (typeof api === "undefined" || api === null) {
+      return Promise.resolve(false);
+    }
+    if (typeof api.requestPermission !== "function") {
+      return Promise.resolve(true);
     }
     return api.requestPermission().then(
       function (state) {
@@ -300,13 +425,11 @@
   }
 
   function requestSensors() {
-    var hasOrient = typeof DeviceOrientationEvent !== "undefined";
-    if (!hasOrient) return Promise.resolve(false);
-    return requestPerm(DeviceOrientationEvent).then(function (ok) {
-      if (!ok) return false;
-      return requestPerm(DeviceMotionEvent).then(function () {
-        return true;
-      });
+    return Promise.all([
+      requestPerm(typeof DeviceOrientationEvent !== "undefined" ? DeviceOrientationEvent : null),
+      requestPerm(typeof DeviceMotionEvent !== "undefined" ? DeviceMotionEvent : null),
+    ]).then(function (pair) {
+      return pair[0] || pair[1];
     });
   }
 
@@ -425,11 +548,24 @@
       if (keys.ArrowDown) lookPitchDeg += DEMO_LOOK_SPEED * dt;
       lookYawDeg = clamp(lookYawDeg, -28, 28);
       lookPitchDeg = clamp(lookPitchDeg, -28, 28);
+      horizAxis = "DEMO";
     } else {
-      var orientYaw = wrapDelta(rawAlpha, alpha0);
-      var orientPitch = wrapDelta(rawBeta, beta0);
-      if (gotMotion) {
-        lookYawDeg = COMPLEMENT * (lookYawDeg + rawYawRate * dt) + (1 - COMPLEMENT) * orientYaw;
+      var dA = wrapDelta(rawAlpha, alpha0);
+      var dB = wrapDelta(rawBeta, beta0);
+      var dG = wrapDelta(rawGamma, gamma0);
+      if (!gotOrientation && gotGravity) {
+        dB = gravPitch - gravPitch0;
+        dG = gravRoll - gravRoll0;
+        horizAxis = "GRAV";
+      } else {
+        horizAxis = "A+G";
+      }
+      var orientYaw = dA + dG;
+      var orientPitch = dB;
+      if (gotMotion && (rawYawRate || rawPitchRate || rawRollRate)) {
+        lookYawDeg =
+          COMPLEMENT * (lookYawDeg + (rawYawRate + rawRollRate) * dt) +
+          (1 - COMPLEMENT) * orientYaw;
         lookPitchDeg =
           COMPLEMENT * (lookPitchDeg + rawPitchRate * dt) + (1 - COMPLEMENT) * orientPitch;
       } else {
@@ -547,6 +683,26 @@
     c.stroke();
   }
 
+  function drawHeadGhost(c) {
+    var x = clamp(300 + lookX, 28, SIZE - 28);
+    var y = clamp(300 + lookY, 100, SIZE - 28);
+    c.strokeStyle = AMBER;
+    c.lineWidth = 2;
+    c.beginPath();
+    c.arc(x, y, 10, 0, Math.PI * 2);
+    c.stroke();
+    c.beginPath();
+    c.moveTo(x - 14, y);
+    c.lineTo(x + 14, y);
+    c.moveTo(x, y - 14);
+    c.lineTo(x, y + 14);
+    c.stroke();
+    c.font = "bold 14px ui-monospace, SF Mono, Menlo, Consolas, monospace";
+    c.fillStyle = AMBER;
+    c.textAlign = "center";
+    c.fillText("HEAD", x, y - 18);
+  }
+
   function drawPipper(c) {
     var x = 300;
     var y = 300;
@@ -656,6 +812,16 @@
     }
 
     drawPipper(ctx);
+    drawHeadGhost(ctx);
+
+    ctx.font = "14px ui-monospace, SF Mono, Menlo, Consolas, monospace";
+    ctx.fillStyle = CYAN;
+    ctx.textAlign = "left";
+    var lines = debugText().split("\n");
+    var i;
+    for (i = 0; i < lines.length; i++) {
+      ctx.fillText(lines[i], 20, 470 + i * 18);
+    }
 
     if (!paused && grace <= 0 && unlockedTime > 2.2) {
       ctx.fillStyle = RED;
@@ -671,6 +837,7 @@
     var dt = Math.min(0.05, (now - lastTs) / 1000);
     lastTs = now;
 
+    refreshHz(now);
     updateLook(dt);
     if (!paused) updateSim(dt);
     drawHud();
@@ -704,27 +871,66 @@
     spawnBandit();
   }
 
+  function stopDebugLoop() {
+    if (debugRaf) cancelAnimationFrame(debugRaf);
+    debugRaf = 0;
+  }
+
+  function startDebugLoop() {
+    if (debugRaf) return;
+    var last = 0;
+    function pulse(now) {
+      if (currentScreen !== "calibrate") {
+        debugRaf = 0;
+        return;
+      }
+      if (!last) last = now;
+      var dt = Math.min(0.05, (now - last) / 1000);
+      last = now;
+      refreshHz(now);
+      updateLook(dt);
+      paintCalibrateDebug();
+      debugRaf = requestAnimationFrame(pulse);
+    }
+    debugRaf = requestAnimationFrame(pulse);
+  }
+
   function beginSession() {
     requestSensors().then(function (ok) {
       demoMode = !ok;
       gotOrientation = false;
       gotMotion = false;
+      gotGravity = false;
       sampleAlpha = [];
       sampleBeta = [];
+      sampleGamma = [];
+      orientHits = 0;
+      motionHits = 0;
+      orientTotal = 0;
+      motionTotal = 0;
+      orientHz = 0;
+      motionHz = 0;
+      hzStamp = 0;
+      resetLookFilters();
       startSensors();
       if (calibrateCopy) {
         calibrateCopy.textContent = demoMode
           ? "DEMO MODE. Arrows look around. Enter to start."
-          : "Look forward. Enter to zero your aim.";
+          : "Move your head. Numbers should change. Then look forward and Enter.";
       }
       navigateTo("calibrate");
+      startDebugLoop();
     });
   }
 
   function startHunt() {
-    if (!demoMode && !gotOrientation) demoMode = true;
+    if (!demoMode && !gotOrientation && !gotMotion && !gotGravity) demoMode = true;
     alpha0 = sampleAlpha.length ? meanAngle(sampleAlpha) : rawAlpha;
     beta0 = sampleBeta.length ? meanAngle(sampleBeta) : rawBeta;
+    gamma0 = sampleGamma.length ? meanAngle(sampleGamma) : rawGamma;
+    gravPitch0 = gravPitch;
+    gravRoll0 = gravRoll;
+    stopDebugLoop();
     resetRunState();
     paused = false;
     pauseOverlay.classList.add("hidden");
@@ -748,6 +954,7 @@
 
   function quitToTitle() {
     stopLoop();
+    stopDebugLoop();
     stopSensors();
     paused = false;
     pauseOverlay.classList.add("hidden");
