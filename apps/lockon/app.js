@@ -9,7 +9,7 @@
     SELECT: "Enter",
   };
 
-  var BUILD = "v20";
+  var BUILD = "v21";
   var SIZE = 600;
   var YAW_MIN = -24;
   var YAW_MAX = 24;
@@ -469,19 +469,21 @@
     };
   }
 
+  var HOLDS = [
+    { name: "CENTER", yaw: 0, pitch: 6 },
+    { name: "RIGHT", yaw: 16, pitch: 6 },
+    { name: "LEFT", yaw: -16, pitch: 6 },
+    { name: "UP", yaw: 0, pitch: 12 },
+    { name: "UP-R", yaw: 14, pitch: 10 },
+    { name: "UP-L", yaw: -14, pitch: 10 },
+  ];
+
   function spawnBandit() {
-    var easy = wave === 1;
+    var hold = HOLDS[(wave - 1) % HOLDS.length];
     bandit = {
-      pattern: rng() > 0.5 ? "orbit" : "figure8",
-      t: 0,
-      cyaw: (rng() - 0.5) * (easy ? 16 : 28),
-      cpitch: easy ? 3.5 + rng() * 2 : 4 + rng() * 3,
-      yaw: 0,
-      pitch: 5,
-      ryaw: easy ? 6 + rng() * 5 : 8 + rng() * 8,
-      rpitch: easy ? 0.6 + rng() * 0.6 : 1 + rng() * 1.2,
-      phase: rng() * Math.PI * 2,
-      speed: easy ? 0.22 : 0.22 + (wave - 1) * 0.08,
+      name: hold.name,
+      yaw: hold.yaw,
+      pitch: hold.pitch,
     };
     lockMeter = 0;
     unlockedTime = 0;
@@ -489,24 +491,7 @@
     locked = false;
   }
 
-  function updateBandit(dt) {
-    if (!bandit) return;
-    bandit.t += dt * bandit.speed;
-    var t = bandit.t + bandit.phase;
-    var wantYaw;
-    var wantPitch;
-    if (bandit.pattern === "figure8") {
-      wantYaw = bandit.cyaw + Math.sin(t) * bandit.ryaw;
-      wantPitch = bandit.cpitch + Math.sin(t * 2) * bandit.rpitch * 0.7;
-    } else {
-      wantYaw = bandit.cyaw + Math.cos(t) * bandit.ryaw;
-      wantPitch = bandit.cpitch + Math.sin(t) * bandit.rpitch;
-    }
-    var held = clampTarget(wantYaw, wantPitch);
-    var k = 1 - Math.exp(-dt / 0.55);
-    bandit.yaw += (held.yaw - bandit.yaw) * k;
-    bandit.pitch += (held.pitch - bandit.pitch) * k;
-  }
+  function updateBandit() {}
 
   function banditScreen() {
     if (!bandit) return { x: 300, y: 300 };
@@ -849,6 +834,14 @@
         ctx.strokeStyle = locked || killFlash > 0 ? RED : GREEN;
         ctx.lineWidth = 2;
         drawDiamond(ctx, screen.x, screen.y, 14);
+        ctx.fillStyle = GREEN;
+        ctx.font = "bold 14px ui-monospace, SF Mono, Menlo, Consolas, monospace";
+        ctx.textAlign = "center";
+        ctx.fillText(
+          bandit.name + "  Y" + Math.round(bandit.yaw) + " P" + Math.round(bandit.pitch),
+          screen.x,
+          screen.y + 28
+        );
         if (dist < radius * 1.65) {
           drawLockBox(ctx, screen.x, screen.y, 34 + (1 - clamp(lockMeter, 0, 1)) * 8);
         }
