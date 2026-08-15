@@ -10,10 +10,11 @@
   };
 
   var SIZE = 600;
-  var TARGET_PAD_X = 48;
-  var TARGET_TOP = 108;
-  var TARGET_BOTTOM = 72;
-  var SENSITIVITY = 14;
+  var YAW_MIN = -70;
+  var YAW_MAX = 70;
+  var PITCH_MIN = -10;
+  var PITCH_MAX = 50;
+  var PX_PER_DEG = 8;
   var COMPLEMENT = 0.9;
   var LOCK_FILL = 2.5;
   var LOCK_DECAY = 0.4;
@@ -80,7 +81,7 @@
   var hzStamp = 0;
   var debugRaf = 0;
   var horizAxis = "A";
-  var vertAxis = "-G";
+  var vertAxis = "G";
   var zerosSet = false;
 
   var lookYawDeg = 0;
@@ -104,6 +105,7 @@
   var grace = 0;
   var locked = false;
   var killFlash = 0;
+  var zeroFlash = 0;
   var bandit = null;
 
   function pad(n, width) {
@@ -246,9 +248,10 @@
         "  pit " +
         fmt(lookPitchDeg) +
         "  look " +
-        Math.round(lookX) +
-        "," +
-        Math.round(lookY),
+        Math.round(lookYawDeg) +
+        "°," +
+        Math.round(lookPitchDeg) +
+        "°",
       "aim X:" +
         horizAxis +
         " Y:" +
@@ -439,25 +442,32 @@
     return Math.max(46, BASE_RADIUS - (wave - 3) * 2);
   }
 
+  function clampLook(yaw, pitch) {
+    return {
+      yaw: clamp(yaw, YAW_MIN, YAW_MAX),
+      pitch: clamp(pitch, PITCH_MIN, PITCH_MAX),
+    };
+  }
+
   function spawnBandit() {
     var patterns = ["orbit", "figure8", "zigzag", "hoverdash", "spiral"];
     var pattern = patterns[Math.floor(rng() * patterns.length)];
     bandit = {
       pattern: pattern,
-      secondary: rng() > 0.5,
+      secondary: rng() > 0.45,
       t: 0,
-      cx: 220 + rng() * 160,
-      cy: 250 + rng() * 140,
-      x: 300,
-      y: 320,
-      rx: 70 + rng() * 80,
-      ry: 50 + rng() * 55,
+      cyaw: (rng() - 0.5) * 40,
+      cpitch: 8 + rng() * 18,
+      yaw: 0,
+      pitch: 12,
+      ryaw: 12 + rng() * 16,
+      rpitch: 6 + rng() * 8,
       phase: rng() * Math.PI * 2,
       speed: 1.05 + wave * 0.16,
       jinkEvery: Math.max(0.9, 3.8 - wave * 0.28),
       jinkTimer: 1.1 + rng() * 1.4,
-      jinkX: 0,
-      jinkY: 0,
+      jinkYaw: 0,
+      jinkPitch: 0,
       jinkAge: 0,
       dash: 0,
       dashDir: 1,
@@ -476,79 +486,85 @@
     bandit.jinkAge = Math.max(0, bandit.jinkAge - dt);
 
     var t = bandit.t + bandit.phase;
-    var x = bandit.cx;
-    var y = bandit.cy;
+    var yaw = bandit.cyaw;
+    var pitch = bandit.cpitch;
 
     switch (bandit.pattern) {
       case "orbit":
-        x = bandit.cx + Math.cos(t) * bandit.rx;
-        y = bandit.cy + Math.sin(t) * bandit.ry;
+        yaw = bandit.cyaw + Math.cos(t) * bandit.ryaw;
+        pitch = bandit.cpitch + Math.sin(t) * bandit.rpitch;
         break;
       case "figure8":
-        x = bandit.cx + Math.sin(t) * bandit.rx;
-        y = bandit.cy + Math.sin(t * 2) * bandit.ry * 0.7;
+        yaw = bandit.cyaw + Math.sin(t) * bandit.ryaw;
+        pitch = bandit.cpitch + Math.sin(t * 2) * bandit.rpitch * 0.7;
         break;
       case "zigzag":
-        x = bandit.cx + Math.sin(t * 2.4) * bandit.rx;
-        y = bandit.cy + (Math.asin(Math.sin(t * 1.3)) / (Math.PI / 2)) * bandit.ry;
+        yaw = bandit.cyaw + Math.sin(t * 2.4) * bandit.ryaw;
+        pitch = bandit.cpitch + (Math.asin(Math.sin(t * 1.3)) / (Math.PI / 2)) * bandit.rpitch;
         break;
       case "hoverdash":
         bandit.hoverT += dt;
         if (bandit.dash > 0) {
           bandit.dash -= dt;
-          x = bandit.cx + bandit.dashDir * (1 - Math.max(0, bandit.dash) / 0.32) * bandit.rx;
-          y = bandit.cy + Math.sin(t * 0.8) * 18;
+          yaw = bandit.cyaw + bandit.dashDir * (1 - Math.max(0, bandit.dash) / 0.32) * bandit.ryaw;
+          pitch = bandit.cpitch + Math.sin(t * 0.8) * 3;
         } else {
-          x = bandit.cx + Math.sin(t * 0.35) * 14;
-          y = bandit.cy + Math.cos(t * 0.4) * 14;
+          yaw = bandit.cyaw + Math.sin(t * 0.35) * 3;
+          pitch = bandit.cpitch + Math.cos(t * 0.4) * 3;
           if (bandit.hoverT > 0.95) {
             bandit.hoverT = 0;
             bandit.dash = 0.32;
             bandit.dashDir = rng() > 0.5 ? 1 : -1;
-            bandit.cx = clamp(bandit.cx + bandit.dashDir * 36, 160, 440);
+            bandit.cyaw = clamp(bandit.cyaw + bandit.dashDir * 10, YAW_MIN + 16, YAW_MAX - 16);
           }
         }
         break;
       default:
-        var r = 40 + (Math.sin(t * 0.35) * 0.5 + 0.5) * Math.min(bandit.rx, 110);
-        x = bandit.cx + Math.cos(t * 1.4) * r;
-        y = bandit.cy + Math.sin(t * 1.4) * r * 0.75;
+        var r = 8 + (Math.sin(t * 0.35) * 0.5 + 0.5) * Math.min(bandit.ryaw, 18);
+        yaw = bandit.cyaw + Math.cos(t * 1.4) * r;
+        pitch = bandit.cpitch + Math.sin(t * 1.4) * bandit.rpitch * 0.75;
         break;
     }
 
     if (bandit.secondary) {
-      x += Math.sin(t * 0.55) * 18;
-      y += Math.cos(t * 0.4) * 14;
+      yaw += Math.sin(t * 0.55) * 4;
+      pitch += Math.cos(t * 0.4) * 3;
     }
 
     if (bandit.jinkTimer <= 0) {
       bandit.jinkTimer = bandit.jinkEvery * (0.7 + rng() * 0.6);
-      bandit.jinkX = (rng() - 0.5) * 140;
-      bandit.jinkY = (rng() - 0.5) * 110;
+      bandit.jinkYaw = (rng() - 0.5) * 24;
+      bandit.jinkPitch = (rng() - 0.5) * 12;
       bandit.jinkAge = 0.45;
     }
 
     var jAmt = bandit.jinkAge / 0.45;
-    x += bandit.jinkX * jAmt;
-    y += bandit.jinkY * jAmt;
+    yaw += bandit.jinkYaw * jAmt;
+    pitch += bandit.jinkPitch * jAmt;
 
-    bandit.x = clamp(x, TARGET_PAD_X, SIZE - TARGET_PAD_X);
-    bandit.y = clamp(y, TARGET_TOP, SIZE - TARGET_BOTTOM);
+    var held = clampLook(yaw, pitch);
+    bandit.yaw = held.yaw;
+    bandit.pitch = held.pitch;
   }
 
   function banditScreen() {
-    if (!bandit) return { x: 300, y: 320 };
-    return { x: bandit.x - lookX, y: bandit.y - lookY };
+    if (!bandit) return { x: 300, y: 300 };
+    return {
+      x: 300 + (bandit.yaw - lookYawDeg) * PX_PER_DEG,
+      y: 300 - (bandit.pitch - lookPitchDeg) * PX_PER_DEG,
+    };
   }
 
   function updateLook(dt) {
+    var nextYaw;
+    var nextPitch;
     if (demoMode) {
       if (keys.ArrowLeft) lookYawDeg -= DEMO_LOOK_SPEED * dt;
       if (keys.ArrowRight) lookYawDeg += DEMO_LOOK_SPEED * dt;
-      if (keys.ArrowUp) lookPitchDeg -= DEMO_LOOK_SPEED * dt;
-      if (keys.ArrowDown) lookPitchDeg += DEMO_LOOK_SPEED * dt;
-      lookYawDeg = clamp(lookYawDeg, -28, 28);
-      lookPitchDeg = clamp(lookPitchDeg, -28, 28);
+      if (keys.ArrowUp) lookPitchDeg += DEMO_LOOK_SPEED * dt;
+      if (keys.ArrowDown) lookPitchDeg -= DEMO_LOOK_SPEED * dt;
+      nextYaw = lookYawDeg;
+      nextPitch = lookPitchDeg;
       horizAxis = "DEMO";
       vertAxis = "DEMO";
     } else {
@@ -557,26 +573,28 @@
       if (!gotOrientation && gotGravity) {
         dA = gravRoll - gravRoll0;
         dG = gravPitch - gravPitch0;
-        horizAxis = "GRAV-R";
-        vertAxis = "-GRAV-P";
+        horizAxis = "GRAV";
+        vertAxis = "GRAV";
       } else {
         horizAxis = "A";
-        vertAxis = "-G";
+        vertAxis = "G";
       }
-      var orientYaw = dA;
-      var orientPitch = -dG;
+      nextYaw = dA;
+      nextPitch = dG;
       if (gotMotion && (rawYawRate || rawRollRate)) {
-        lookYawDeg = COMPLEMENT * (lookYawDeg + rawYawRate * dt) + (1 - COMPLEMENT) * orientYaw;
-        lookPitchDeg =
-          COMPLEMENT * (lookPitchDeg + -rawRollRate * dt) + (1 - COMPLEMENT) * orientPitch;
-      } else {
-        lookYawDeg = orientYaw;
-        lookPitchDeg = orientPitch;
+        nextYaw = COMPLEMENT * (lookYawDeg + rawYawRate * dt) + (1 - COMPLEMENT) * dA;
+        nextPitch = COMPLEMENT * (lookPitchDeg + rawRollRate * dt) + (1 - COMPLEMENT) * dG;
       }
     }
 
-    lookX = filterEuro(euroX, lookYawDeg * SENSITIVITY, dt);
-    lookY = filterEuro(euroY, lookPitchDeg * SENSITIVITY, dt);
+    var held = clampLook(nextYaw, nextPitch);
+    lookYawDeg = filterEuro(euroX, held.yaw, dt);
+    lookPitchDeg = filterEuro(euroY, held.pitch, dt);
+    held = clampLook(lookYawDeg, lookPitchDeg);
+    lookYawDeg = held.yaw;
+    lookPitchDeg = held.pitch;
+    lookX = lookYawDeg * PX_PER_DEG;
+    lookY = -lookPitchDeg * PX_PER_DEG;
   }
 
   function killBandit() {
@@ -610,6 +628,7 @@
     if (!bandit) return;
     updateBandit(dt);
     killFlash = Math.max(0, killFlash - dt);
+    zeroFlash = Math.max(0, zeroFlash - dt);
 
     var screen = banditScreen();
     var radius = lockRadius();
@@ -770,6 +789,13 @@
       ctx.fillText("DEMO", 300, 36);
     }
 
+    if (zeroFlash > 0) {
+      ctx.textAlign = "center";
+      ctx.fillStyle = CYAN;
+      ctx.font = "bold 18px ui-monospace, SF Mono, Menlo, Consolas, monospace";
+      ctx.fillText("ZEROED  YAW 0  PITCH 0", 300, 448);
+    }
+
     var status = "TRACKING";
     var statusColor = AMBER;
     if (killFlash > 0) {
@@ -868,6 +894,7 @@
     grace = SPAWN_GRACE;
     locked = false;
     killFlash = 0;
+    zeroFlash = 2.2;
     resetLookFilters();
     spawnBandit();
   }
@@ -920,8 +947,8 @@
       startSensors();
       if (calibrateCopy) {
         calibrateCopy.textContent = demoMode
-          ? "DEMO MODE. Arrows look around. Enter to start."
-          : "Move your head. Numbers should change. Then look forward and Enter.";
+          ? "DEMO MODE. Arrows look around. SET ZERO starts the run."
+          : "Look straight ahead. SET ZERO makes this pose yaw 0 and pitch 0.";
       }
       navigateTo("calibrate");
       startDebugLoop();

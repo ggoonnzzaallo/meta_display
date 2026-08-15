@@ -30,22 +30,22 @@
       </header>
       <div class="content">
         <ul class="facts">
-          <li>Turn left/right and look up/down to keep the bandit in the pipper.</li>
-          <li>Hold lock to kill it. The next one is faster.</li>
-          <li>Enter pauses. Stay unlocked too long and contact is lost.</li>
+          <li>Look straight ahead, then Enter. That pose is yaw 0 and pitch 0.</li>
+          <li>Bandits stay within 70° left/right, 50° up, and 10° down.</li>
+          <li>Hold lock to kill. Enter pauses. Stay unlocked too long and contact is lost.</li>
         </ul>
         <button class="focusable" data-action="home">BACK</button>
       </div>
     </section>
 
-    <section id="calibrate" class="screen hidden" aria-label="Calibrate">
+    <section id="calibrate" class="screen hidden" aria-label="Zero aim">
       <header class="header">
-        <h1>CALIBRATE</h1>
+        <h1>ZERO AIM</h1>
       </header>
       <div class="content">
-        <p id="calibrate-copy" class="lede">Move your head. Numbers should change. Then look forward and Enter.</p>
+        <p id="calibrate-copy" class="lede">Look straight ahead. Enter sets yaw and pitch to 0.</p>
         <pre id="sensor-debug" class="sensor-debug">WAITING FOR IMU…</pre>
-        <button class="focusable" data-action="calibrate">ENTER</button>
+        <button class="focusable" data-action="calibrate">SET ZERO</button>
       </div>
     </section>
 
