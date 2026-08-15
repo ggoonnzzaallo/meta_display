@@ -346,6 +346,15 @@
     if (detailBackEl) detailBackEl.focus();
   }
 
+  function openFocusedRow() {
+    if (currentScreen !== "home") return;
+    var el = document.activeElement;
+    if (!el || !terminalEl.contains(el)) return;
+    var id = el.getAttribute("data-id");
+    if (!id) return;
+    openDetail(findItem(id));
+  }
+
   function openDetail(item) {
     if (!item) return;
     renderDetail(item);
@@ -408,10 +417,18 @@
     goHome();
   });
 
-  terminalEl.addEventListener("click", function (event) {
+  terminalEl.addEventListener("pointerdown", function (event) {
     var row = event.target.closest("[data-id]");
     if (!row) return;
-    openDetail(findItem(row.getAttribute("data-id")));
+    if (event.pointerType === "mouse") {
+      row.focus();
+      return;
+    }
+    event.preventDefault();
+  });
+
+  terminalEl.addEventListener("click", function () {
+    openFocusedRow();
   });
 
   detailCardEl.addEventListener("pointerdown", function (event) {
@@ -485,9 +502,7 @@
           goHome();
           break;
         }
-        if (document.activeElement && document.activeElement.classList.contains("focusable")) {
-          document.activeElement.click();
-        }
+        openFocusedRow();
         break;
       default:
         return;
