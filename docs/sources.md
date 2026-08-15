@@ -15,6 +15,10 @@ Always treat these as the source of truth for Meta Ray-Ban Display Web Apps. Re-
 - [facebookincubator/meta-wearables-webapp](https://github.com/facebookincubator/meta-wearables-webapp)
 - Wearables MCP: `https://mcp.developer.meta.com/wearables` — tool `search_webapps_docs` (no auth)
 
+## On-device I/O findings
+
+The [build guide](https://wearables.developer.meta.com/docs/develop/webapps/build/) still lists camera and microphone as unsupported. `apps/ioprobe/` on glasses (2026-08-14) got live streams from `getUserMedia` for both, plus `navigator.geolocation`. Request only from a user gesture.
+
 ## Chrome simulator
 
 - [Meta Ray-Ban Display Web App Simulator](https://chromewebstore.google.com/detail/jpjlmmodokemlepklkdbimceggpbjcll)

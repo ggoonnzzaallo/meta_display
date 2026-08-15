@@ -9,15 +9,16 @@
     SELECT: "Enter",
   };
 
-  var BUILD = "v22";
+  var BUILD = "v24";
   var SIZE = 600;
   var YAW_MIN = -24;
   var YAW_MAX = 24;
   var PITCH_MIN = 1;
   var PITCH_MAX = 12;
   var PX_PER_DEG = 16;
-  var PITCH_SIGN = -1;
-  var LOOK_SCALE = 0.3;
+  var PITCH_SIGN = 1;
+  var LOOK_SCALE = 1;
+  var SPIKE_DEG = 28;
   var PITCH_SMOOTH = 0.16;
   var HEAD_YAW_MAX = 90;
   var HEAD_PITCH_MIN = -80;
@@ -76,6 +77,12 @@
   var gamma0 = 0;
   var gravPitch0 = 0;
   var gravRoll0 = 0;
+  var IDENT_R = [1, 0, 0, 0, 1, 0, 0, 0, 1];
+  var zeroR = IDENT_R.slice();
+  var vecYaw = 0;
+  var vecPitch = 0;
+  var lastVecYaw = 0;
+  var lastVecPitch = 0;
   var sampleAlpha = [];
   var sampleBeta = [];
   var sampleGamma = [];
@@ -137,6 +144,61 @@
     while (d > 180) d -= 360;
     while (d < -180) d += 360;
     return d;
+  }
+
+  function rotX(a) {
+    var c = Math.cos(a);
+    var s = Math.sin(a);
+    return [1, 0, 0, 0, c, -s, 0, s, c];
+  }
+
+  function rotY(a) {
+    var c = Math.cos(a);
+    var s = Math.sin(a);
+    return [c, 0, s, 0, 1, 0, -s, 0, c];
+  }
+
+  function rotZ(a) {
+    var c = Math.cos(a);
+    var s = Math.sin(a);
+    return [c, -s, 0, s, c, 0, 0, 0, 1];
+  }
+
+  function mul3(A, B) {
+    return [
+      A[0] * B[0] + A[1] * B[3] + A[2] * B[6],
+      A[0] * B[1] + A[1] * B[4] + A[2] * B[7],
+      A[0] * B[2] + A[1] * B[5] + A[2] * B[8],
+      A[3] * B[0] + A[4] * B[3] + A[5] * B[6],
+      A[3] * B[1] + A[4] * B[4] + A[5] * B[7],
+      A[3] * B[2] + A[4] * B[5] + A[5] * B[8],
+      A[6] * B[0] + A[7] * B[3] + A[8] * B[6],
+      A[6] * B[1] + A[7] * B[4] + A[8] * B[7],
+      A[6] * B[2] + A[7] * B[5] + A[8] * B[8],
+    ];
+  }
+
+  function transpose3(A) {
+    return [A[0], A[3], A[6], A[1], A[4], A[7], A[2], A[5], A[8]];
+  }
+
+  function deviceToEarth(alpha, beta, gamma) {
+    var a = (alpha * Math.PI) / 180;
+    var b = (beta * Math.PI) / 180;
+    var g = (gamma * Math.PI) / 180;
+    return mul3(mul3(rotZ(a), rotX(b)), rotY(g));
+  }
+
+  function lookFromMatrix(R, R0) {
+    var Rel = mul3(transpose3(R0), R);
+    var lx = -Rel[2];
+    var ly = -Rel[5];
+    var lz = -Rel[8];
+    var horiz = Math.hypot(lx, lz);
+    var yaw = lastVecYaw;
+    if (horiz >= 0.12) yaw = (Math.atan2(lx, -lz) * 180) / Math.PI;
+    var pitch = (Math.atan2(ly, horiz) * 180) / Math.PI;
+    return { yaw: yaw, pitch: pitch };
   }
 
   function meanAngle(values) {
@@ -203,6 +265,10 @@
     lookY = 0;
     pipperX = 300;
     pipperY = 300;
+    lastVecYaw = 0;
+    lastVecPitch = 0;
+    vecYaw = 0;
+    vecPitch = 0;
   }
 
   function fmt(n) {
@@ -265,7 +331,12 @@
         Math.round(lookYawDeg) +
         "°," +
         Math.round(lookPitchDeg) +
-        "° (pit+ = look UP, -B)",
+        "°  pipper FIXED",
+      "vec " +
+        fmt(vecYaw) +
+        " / " +
+        fmt(vecPitch) +
+        "  (matrix look, not Euler)",
       "aim X:" +
         horizAxis +
         " Y:" +
@@ -494,12 +565,16 @@
 
   function updateBandit() {}
 
+  function worldToScreen(yaw, pitch) {
+    return {
+      x: 300 + (yaw - lookYawDeg) * PX_PER_DEG,
+      y: 300 - (pitch - lookPitchDeg) * PX_PER_DEG,
+    };
+  }
+
   function banditScreen() {
     if (!bandit) return { x: 300, y: 300 };
-    return {
-      x: 300 + bandit.yaw * PX_PER_DEG,
-      y: 300 - bandit.pitch * PX_PER_DEG,
-    };
+    return worldToScreen(bandit.yaw, bandit.pitch);
   }
 
   function updateLook(dt) {
@@ -508,20 +583,39 @@
     var useImu = gotOrientation || gotGravity;
     if (useImu) {
       demoMode = false;
-      var dA = wrapDelta(rawAlpha, alpha0);
-      var dB = wrapDelta(rawBeta, beta0);
       if (!gotOrientation && gotGravity) {
-        dA = gravRoll - gravRoll0;
-        dB = gravPitch - gravPitch0;
+        nextYaw = gravRoll - gravRoll0;
+        nextPitch = PITCH_SIGN * (gravPitch - gravPitch0);
         horizAxis = "GRAV";
         vertAxis = "GRAV";
+        vecYaw = nextYaw;
+        vecPitch = nextPitch;
       } else {
-        horizAxis = "A";
-        vertAxis = "B";
+        var look = lookFromMatrix(deviceToEarth(rawAlpha, rawBeta, rawGamma), zeroR);
+        vecYaw = look.yaw;
+        vecPitch = look.pitch;
+        var yawJump = Math.abs(wrapDelta(look.yaw, lastVecYaw));
+        var pitchJump = Math.abs(look.pitch - lastVecPitch);
+        if (
+          (yawJump > SPIKE_DEG || pitchJump > SPIKE_DEG) &&
+          (lastVecYaw !== 0 || lastVecPitch !== 0)
+        ) {
+          nextYaw = lookYawDeg + rawYawRate * dt;
+          nextPitch = lookPitchDeg + rawPitchRate * dt;
+          horizAxis = "HOLD";
+          vertAxis = "HOLD";
+        } else {
+          lastVecYaw = look.yaw;
+          lastVecPitch = look.pitch;
+          nextYaw = look.yaw;
+          nextPitch = look.pitch;
+          horizAxis = "R";
+          vertAxis = "R";
+        }
       }
       var scale = zerosSet && currentScreen === "play" ? LOOK_SCALE : 1;
-      nextYaw = dA * scale;
-      nextPitch = PITCH_SIGN * dB * scale;
+      nextYaw *= scale;
+      nextPitch *= scale;
     } else {
       if (keys.ArrowLeft) lookYawDeg -= DEMO_LOOK_SPEED * dt;
       if (keys.ArrowRight) lookYawDeg += DEMO_LOOK_SPEED * dt;
@@ -543,8 +637,8 @@
     lookPitchDeg = clamped.pitch;
     lookX = lookYawDeg * PX_PER_DEG;
     lookY = lookPitchDeg * PX_PER_DEG;
-    pipperX = clamp(300 + lookX, 36, SIZE - 36);
-    pipperY = clamp(300 + lookY, 100, SIZE - 36);
+    pipperX = 300;
+    pipperY = 300;
   }
 
   function canFire() {
@@ -561,7 +655,7 @@
         len: 10 + rng() * 18,
       });
     }
-    boom = { t: 0, x: sx, y: sy, shards: shards };
+    boom = { t: 0, yaw: sx, pitch: sy, shards: shards };
     bandit = null;
     locked = false;
     lockMeter = 0;
@@ -569,7 +663,6 @@
 
   function fire() {
     if (!canFire() || !bandit) return;
-    var screen = banditScreen();
     var bonus = Math.round((1 - unlockedTime / LOST_CONTACT) * 20);
     score += 100 * wave + bonus;
     if (score > best) {
@@ -578,11 +671,14 @@
     }
     wave += 1;
     killFlash = BOOM_TIME;
-    startBoom(screen.x, screen.y);
+    startBoom(bandit.yaw, bandit.pitch);
   }
 
   function drawBoom(c) {
     if (!boom) return;
+    var pos = worldToScreen(boom.yaw, boom.pitch);
+    var bx = pos.x;
+    var by = pos.y;
     var k = clamp(boom.t / BOOM_TIME, 0, 1);
     var flash = Math.max(0, 1 - k * 2.4);
     if (flash > 0) {
@@ -592,19 +688,19 @@
     c.strokeStyle = k < 0.35 ? RED : AMBER;
     c.lineWidth = 3;
     c.beginPath();
-    c.arc(boom.x, boom.y, 16 + k * 160, 0, Math.PI * 2);
+    c.arc(bx, by, 16 + k * 160, 0, Math.PI * 2);
     c.stroke();
     c.beginPath();
-    c.arc(boom.x, boom.y, 6 + k * 95, 0, Math.PI * 2);
+    c.arc(bx, by, 6 + k * 95, 0, Math.PI * 2);
     c.stroke();
     c.strokeStyle = CYAN;
     c.lineWidth = 2;
     boom.shards.forEach(function (shard) {
       var dist = shard.spd * boom.t;
-      var x1 = boom.x + Math.cos(shard.ang) * dist;
-      var y1 = boom.y + Math.sin(shard.ang) * dist;
-      var x0 = boom.x + Math.cos(shard.ang) * Math.max(0, dist - shard.len);
-      var y0 = boom.y + Math.sin(shard.ang) * Math.max(0, dist - shard.len);
+      var x1 = bx + Math.cos(shard.ang) * dist;
+      var y1 = by + Math.sin(shard.ang) * dist;
+      var x0 = bx + Math.cos(shard.ang) * Math.max(0, dist - shard.len);
+      var y0 = by + Math.sin(shard.ang) * Math.max(0, dist - shard.len);
       c.globalAlpha = 1 - k;
       c.beginPath();
       c.moveTo(x0, y0);
@@ -615,7 +711,65 @@
     c.fillStyle = RED;
     c.font = "bold 28px ui-monospace, SF Mono, Menlo, Consolas, monospace";
     c.textAlign = "center";
-    c.fillText("FOX", boom.x, boom.y - 20 - k * 30);
+    c.fillText("FOX", bx, by - 20 - k * 30);
+  }
+
+  function drawWorld(c) {
+    var horizonY = 300 + lookPitchDeg * PX_PER_DEG;
+    var groundTop = Math.max(92, horizonY);
+
+    if (groundTop < SIZE) {
+      c.fillStyle = "rgba(0, 255, 136, 0.055)";
+      c.fillRect(0, groundTop, SIZE, SIZE - groundTop);
+    }
+
+    if (horizonY > 96 && horizonY < SIZE - 12) {
+      c.strokeStyle = GREEN;
+      c.lineWidth = 2;
+      c.beginPath();
+      c.moveTo(28, horizonY);
+      c.lineTo(SIZE - 28, horizonY);
+      c.stroke();
+      c.font = "bold 12px ui-monospace, SF Mono, Menlo, Consolas, monospace";
+      c.fillStyle = GREEN;
+      c.textAlign = "left";
+      c.fillText("0", 32, horizonY - 6);
+    }
+
+    var pitches = [-20, -15, -10, -5, 5, 10, 15, 20];
+    var i;
+    c.strokeStyle = GREEN;
+    c.fillStyle = GREEN;
+    c.lineWidth = 2;
+    c.font = "bold 12px ui-monospace, SF Mono, Menlo, Consolas, monospace";
+    c.textAlign = "right";
+    for (i = 0; i < pitches.length; i++) {
+      var pitch = pitches[i];
+      var y = 300 - (pitch - lookPitchDeg) * PX_PER_DEG;
+      if (y < 108 || y > SIZE - 24) continue;
+      var half = pitch % 10 === 0 ? 46 : 28;
+      c.beginPath();
+      c.moveTo(300 - half, y);
+      c.lineTo(300 - 18, y);
+      c.moveTo(300 + 18, y);
+      c.lineTo(300 + half, y);
+      c.stroke();
+      c.fillText(String(pitch), 300 - half - 8, y + 4);
+    }
+
+    var startYaw = Math.floor((lookYawDeg - 22) / 10) * 10;
+    var yaw;
+    c.textAlign = "center";
+    for (yaw = startYaw; yaw <= lookYawDeg + 22; yaw += 10) {
+      var x = 300 + (yaw - lookYawDeg) * PX_PER_DEG;
+      if (x < 40 || x > SIZE - 40) continue;
+      var major = yaw % 20 === 0;
+      c.beginPath();
+      c.moveTo(x, 118);
+      c.lineTo(x, major ? 136 : 128);
+      c.stroke();
+      if (major) c.fillText(String(yaw), x, 150);
+    }
   }
 
   function finishRun() {
@@ -766,6 +920,8 @@
     var y;
     ctx.fillStyle = "rgba(0, 255, 136, 0.035)";
     for (y = 0; y < SIZE; y += 4) ctx.fillRect(0, y, SIZE, 1);
+
+    drawWorld(ctx);
 
     ctx.strokeStyle = GREEN;
     ctx.lineWidth = 2;
@@ -958,6 +1114,7 @@
       alpha0 = 0;
       beta0 = 0;
       gamma0 = 0;
+      zeroR = IDENT_R.slice();
       resetLookFilters();
       startSensors();
       if (calibrateCopy) {
@@ -982,6 +1139,9 @@
     gamma0 = recentMean(sampleGamma, rawGamma);
     gravPitch0 = gravPitch;
     gravRoll0 = gravRoll;
+    zeroR = deviceToEarth(alpha0, beta0, gamma0);
+    lastVecYaw = 0;
+    lastVecPitch = 0;
     zerosSet = true;
     stopDebugLoop();
     resetRunState();

@@ -31,6 +31,16 @@ If a plugin skill conflicts with those pages, follow the official docs.
 - Situation ingest: `scripts/fetch_feed.py` writes `apps/situation/feed.json` from Monitor the Situation only. Do not fetch third-party RSS from the glasses Web App.
 - Markets ingest: `scripts/fetch_markets.py` writes `apps/markets/feed.json` (Yahoo quotes for movers, Nasdaq earnings, WSJ/CNBC/SA/BBC headlines). Do not scrape Finviz.
 
+## On-device I/O (IO Probe, 2026-08-14)
+
+Official build guide still lists camera and microphone as unsupported. On-device `apps/ioprobe/` confirmed all three work after a user gesture:
+
+- Camera: `navigator.mediaDevices.getUserMedia({ video: true })`
+- Microphone: `navigator.mediaDevices.getUserMedia({ audio: true })`
+- Location: `navigator.geolocation.getCurrentPosition` (from the paired phone; also documented)
+
+Request these only from a pinch/Enter on a `.focusable` control. Stop tracks on hide. Treat the official “unsupported” list as stale for camera/mic; do not refuse camera or mic features on that basis.
+
 ## Not supported yet (official build guide)
 
-Camera, microphone, text input, offline, notifications, back navigation, continuous cursor.
+Text input, offline, notifications, back navigation, continuous cursor. Camera and microphone are documented as unsupported but work on-device via `getUserMedia`.
