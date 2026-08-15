@@ -10,17 +10,18 @@
   };
 
   var SIZE = 600;
-  var YAW_MIN = -70;
-  var YAW_MAX = 70;
-  var PITCH_MIN = -10;
-  var PITCH_MAX = 50;
+  var YAW_MIN = -40;
+  var YAW_MAX = 40;
+  var PITCH_MIN = 0;
+  var PITCH_MAX = 42;
   var PX_PER_DEG = 8;
   var COMPLEMENT = 0.9;
-  var LOCK_FILL = 2.5;
-  var LOCK_DECAY = 0.4;
+  var LOCK_FILL = 0.4;
+  var LOCK_DECAY = 0.7;
+  var BOOM_TIME = 0.85;
   var LOST_CONTACT = 5;
   var SPAWN_GRACE = 1.2;
-  var BASE_RADIUS = 64;
+  var BASE_RADIUS = 78;
   var DEMO_LOOK_SPEED = 90;
   var BEST_KEY = "lockon-best";
   var SAMPLE_MAX = 16;
@@ -107,6 +108,7 @@
   var killFlash = 0;
   var zeroFlash = 0;
   var bandit = null;
+  var boom = null;
 
   function pad(n, width) {
     var s = String(Math.max(0, Math.floor(n)));
@@ -452,20 +454,21 @@
   function spawnBandit() {
     var patterns = ["orbit", "figure8", "zigzag", "hoverdash", "spiral"];
     var pattern = patterns[Math.floor(rng() * patterns.length)];
+    var easy = wave === 1;
     bandit = {
       pattern: pattern,
-      secondary: rng() > 0.45,
+      secondary: !easy && wave > 2 && rng() > 0.45,
       t: 0,
-      cyaw: (rng() - 0.5) * 40,
-      cpitch: 8 + rng() * 18,
+      cyaw: (rng() - 0.5) * (easy ? 18 : 28),
+      cpitch: easy ? 16 + rng() * 8 : 18 + rng() * 12,
       yaw: 0,
-      pitch: 12,
-      ryaw: 12 + rng() * 16,
-      rpitch: 6 + rng() * 8,
+      pitch: 18,
+      ryaw: easy ? 6 + rng() * 5 : 10 + rng() * 12,
+      rpitch: easy ? 2 + rng() * 3 : 4 + rng() * 6,
       phase: rng() * Math.PI * 2,
-      speed: 1.05 + wave * 0.16,
-      jinkEvery: Math.max(0.9, 3.8 - wave * 0.28),
-      jinkTimer: 1.1 + rng() * 1.4,
+      speed: easy ? 0.38 : 0.38 + (wave - 1) * 0.14,
+      jinkEvery: easy ? 6.2 : Math.max(1.1, 4.2 - wave * 0.24),
+      jinkTimer: easy ? 3.5 + rng() * 2 : 1.1 + rng() * 1.4,
       jinkYaw: 0,
       jinkPitch: 0,
       jinkAge: 0,
@@ -533,8 +536,8 @@
 
     if (bandit.jinkTimer <= 0) {
       bandit.jinkTimer = bandit.jinkEvery * (0.7 + rng() * 0.6);
-      bandit.jinkYaw = (rng() - 0.5) * 24;
-      bandit.jinkPitch = (rng() - 0.5) * 12;
+      bandit.jinkYaw = (rng() - 0.5) * (wave === 1 ? 10 : 18);
+      bandit.jinkPitch = rng() * (wave === 1 ? 5 : 8);
       bandit.jinkAge = 0.45;
     }
 
@@ -597,7 +600,29 @@
     lookY = -lookPitchDeg * PX_PER_DEG;
   }
 
-  function killBandit() {
+  function canFire() {
+    return !paused && !boom && locked && lockMeter >= 1;
+  }
+
+  function startBoom(sx, sy) {
+    var shards = [];
+    var i;
+    for (i = 0; i < 16; i++) {
+      shards.push({
+        ang: (i / 16) * Math.PI * 2 + rng() * 0.35,
+        spd: 90 + rng() * 240,
+        len: 10 + rng() * 18,
+      });
+    }
+    boom = { t: 0, x: sx, y: sy, shards: shards };
+    bandit = null;
+    locked = false;
+    lockMeter = 0;
+  }
+
+  function fire() {
+    if (!canFire() || !bandit) return;
+    var screen = banditScreen();
     var bonus = Math.round((1 - unlockedTime / LOST_CONTACT) * 20);
     score += 100 * wave + bonus;
     if (score > best) {
@@ -605,8 +630,45 @@
       writeBest(best);
     }
     wave += 1;
-    killFlash = 0.45;
-    spawnBandit();
+    killFlash = BOOM_TIME;
+    startBoom(screen.x, screen.y);
+  }
+
+  function drawBoom(c) {
+    if (!boom) return;
+    var k = clamp(boom.t / BOOM_TIME, 0, 1);
+    var flash = Math.max(0, 1 - k * 2.4);
+    if (flash > 0) {
+      c.fillStyle = "rgba(255, 80, 30, " + (flash * 0.28) + ")";
+      c.fillRect(0, 0, SIZE, SIZE);
+    }
+    c.strokeStyle = k < 0.35 ? RED : AMBER;
+    c.lineWidth = 3;
+    c.beginPath();
+    c.arc(boom.x, boom.y, 16 + k * 160, 0, Math.PI * 2);
+    c.stroke();
+    c.beginPath();
+    c.arc(boom.x, boom.y, 6 + k * 95, 0, Math.PI * 2);
+    c.stroke();
+    c.strokeStyle = CYAN;
+    c.lineWidth = 2;
+    boom.shards.forEach(function (shard) {
+      var dist = shard.spd * boom.t;
+      var x1 = boom.x + Math.cos(shard.ang) * dist;
+      var y1 = boom.y + Math.sin(shard.ang) * dist;
+      var x0 = boom.x + Math.cos(shard.ang) * Math.max(0, dist - shard.len);
+      var y0 = boom.y + Math.sin(shard.ang) * Math.max(0, dist - shard.len);
+      c.globalAlpha = 1 - k;
+      c.beginPath();
+      c.moveTo(x0, y0);
+      c.lineTo(x1, y1);
+      c.stroke();
+    });
+    c.globalAlpha = 1;
+    c.fillStyle = RED;
+    c.font = "bold 28px ui-monospace, SF Mono, Menlo, Consolas, monospace";
+    c.textAlign = "center";
+    c.fillText("FOX", boom.x, boom.y - 20 - k * 30);
   }
 
   function finishRun() {
@@ -625,10 +687,20 @@
   }
 
   function updateSim(dt) {
-    if (!bandit) return;
-    updateBandit(dt);
     killFlash = Math.max(0, killFlash - dt);
     zeroFlash = Math.max(0, zeroFlash - dt);
+
+    if (boom) {
+      boom.t += dt;
+      if (boom.t >= BOOM_TIME) {
+        boom = null;
+        spawnBandit();
+      }
+      return;
+    }
+
+    if (!bandit) return;
+    updateBandit(dt);
 
     var screen = banditScreen();
     var radius = lockRadius();
@@ -643,12 +715,8 @@
     }
 
     if (locked) {
-      lockMeter += dt / LOCK_FILL;
+      lockMeter = Math.min(1, lockMeter + dt / LOCK_FILL);
       unlockedTime = 0;
-      if (lockMeter >= 1) {
-        lockMeter = 1;
-        killBandit();
-      }
     } else {
       lockMeter = Math.max(0, lockMeter - dt * LOCK_DECAY);
       unlockedTime += dt;
@@ -798,8 +866,11 @@
 
     var status = "TRACKING";
     var statusColor = AMBER;
-    if (killFlash > 0) {
+    if (boom) {
       status = "FOX";
+      statusColor = RED;
+    } else if (canFire()) {
+      status = "FIRE";
       statusColor = RED;
     } else if (locked) {
       status = "LOCK";
@@ -817,8 +888,17 @@
     ctx.strokeStyle = GREEN;
     ctx.lineWidth = 2;
     ctx.strokeRect(barX, barY, barW, barH);
-    ctx.fillStyle = locked || killFlash > 0 ? RED : AMBER;
+    ctx.fillStyle = boom || canFire() ? RED : locked ? AMBER : GREEN;
     ctx.fillRect(barX + 1, barY + 1, (barW - 2) * clamp(lockMeter, 0, 1), barH - 2);
+
+    if (canFire()) {
+      ctx.fillStyle = RED;
+      ctx.font = "bold 16px ui-monospace, SF Mono, Menlo, Consolas, monospace";
+      ctx.textAlign = "center";
+      ctx.fillText("PINCH TO FIRE", 300, 108);
+    }
+
+    drawBoom(ctx);
 
     if (bandit) {
       var screen = banditScreen();
@@ -895,6 +975,7 @@
     locked = false;
     killFlash = 0;
     zeroFlash = 2.2;
+    boom = null;
     resetLookFilters();
     spawnBandit();
   }
@@ -1030,7 +1111,8 @@
     if (currentScreen === "play" && !paused) {
       if (event.key === DPAD.SELECT) {
         event.preventDefault();
-        pauseGame();
+        if (canFire()) fire();
+        else if (!boom) pauseGame();
         return;
       }
       if (keys.hasOwnProperty(event.key)) {
