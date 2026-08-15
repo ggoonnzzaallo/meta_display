@@ -9,7 +9,7 @@
     SELECT: "Enter",
   };
 
-  var BUILD = "v29";
+  var BUILD = "v30";
   var SIZE = 600;
   var YAW_MIN = -10;
   var YAW_MAX = 10;
@@ -20,6 +20,8 @@
   var ROLL_SIGN = 1;
   var LOOK_SCALE = 1;
   var SPIKE_DEG = 50;
+  var ROLL_DEADZONE = 2.5;
+  var ROLL_SETTLE = 18;
   var HEAD_YAW_MAX = 18;
   var HEAD_PITCH_MIN = -16;
   var HEAD_PITCH_MAX = 16;
@@ -81,6 +83,7 @@
   var lastEulerYaw = 0;
   var lastEulerPitch = 0;
   var lastEulerRoll = 0;
+  var rollSettle = 0;
   var sampleAlpha = [];
   var sampleBeta = [];
   var sampleGamma = [];
@@ -215,6 +218,7 @@
     lastEulerYaw = 0;
     lastEulerPitch = 0;
     lastEulerRoll = 0;
+    rollSettle = 0;
   }
 
   function fmt(n) {
@@ -276,7 +280,7 @@
         "  rol " +
         fmt(lookRollDeg) +
         "  pipper FIXED",
-      "look yaw=dA  pit=+dB  rol=+dG",
+      "look yaw=dA  pit=+dB  rol=grav",
       "aim X:" +
         horizAxis +
         " Y:" +
@@ -474,6 +478,17 @@
     };
   }
 
+  function readHeadRoll() {
+    if (gotGravity) return wrapDelta(gravRoll, gravRoll0);
+    return wrapDelta(rawGamma, gamma0);
+  }
+
+  function rebaseRollZero() {
+    if (gotGravity) gravRoll0 = gravRoll;
+    else gamma0 = rawGamma;
+    lastEulerRoll = 0;
+  }
+
   function clampHead(yaw, pitch, roll) {
     return {
       yaw: clamp(yaw, -HEAD_YAW_MAX, HEAD_YAW_MAX),
@@ -527,17 +542,14 @@
       demoMode = false;
       var dA = wrapDelta(rawAlpha, alpha0);
       var dB = wrapDelta(rawBeta, beta0);
-      var dG = wrapDelta(rawGamma, gamma0);
       if (!gotOrientation && gotGravity) {
         nextYaw = gravRoll - gravRoll0;
         nextPitch = PITCH_SIGN * (gravPitch - gravPitch0);
-        nextRoll = 0;
         horizAxis = "GRAV";
         vertAxis = "GRAV";
       } else {
         var yaw = dA;
         var pitch = PITCH_SIGN * dB;
-        var roll = ROLL_SIGN * dG;
         var yawJump = Math.abs(wrapDelta(yaw, lastEulerYaw));
         var pitchJump = Math.abs(pitch - lastEulerPitch);
         if (
@@ -556,13 +568,22 @@
           horizAxis = "A";
           vertAxis = "B";
         }
-        var rollJump = Math.abs(roll - lastEulerRoll);
-        if (rollJump > SPIKE_DEG && lastEulerRoll !== 0) {
-          nextRoll = lookRollDeg;
-        } else {
-          lastEulerRoll = roll;
-          nextRoll = roll;
-        }
+      }
+      var roll = ROLL_SIGN * readHeadRoll();
+      if (rollSettle > 0) {
+        rollSettle -= 1;
+        rebaseRollZero();
+        nextRoll = 0;
+        lookRollDeg = 0;
+      } else if (Math.abs(roll) < ROLL_DEADZONE) {
+        nextRoll = 0;
+        lastEulerRoll = 0;
+      } else if (Math.abs(roll - lastEulerRoll) > SPIKE_DEG && lastEulerRoll !== 0) {
+        rebaseRollZero();
+        nextRoll = 0;
+      } else {
+        lastEulerRoll = roll;
+        nextRoll = roll;
       }
       var scale = zerosSet && currentScreen === "play" ? LOOK_SCALE : 1;
       nextYaw *= scale;
@@ -1097,6 +1118,7 @@
     lastEulerYaw = 0;
     lastEulerPitch = 0;
     lastEulerRoll = 0;
+    rollSettle = ROLL_SETTLE;
     zerosSet = true;
     stopDebugLoop();
     resetRunState();
