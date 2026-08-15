@@ -10,21 +10,19 @@
   };
 
   var SIZE = 600;
-  var AIM_PAD = 24;
   var TARGET_PAD_X = 48;
   var TARGET_TOP = 108;
   var TARGET_BOTTOM = 72;
-  var SENSITIVITY = 10;
-  var DEADZONE = 2;
-  var AIM_LERP = 0.28;
+  var SENSITIVITY = 14;
+  var COMPLEMENT = 0.9;
   var LOCK_FILL = 2.5;
   var LOCK_DECAY = 0.4;
   var LOST_CONTACT = 5;
   var SPAWN_GRACE = 1.2;
-  var BASE_RADIUS = 52;
-  var DEMO_SPEED = 280;
+  var BASE_RADIUS = 64;
+  var DEMO_LOOK_SPEED = 90;
   var BEST_KEY = "lockon-best";
-  var MUTE_KEY = "lockon-mute";
+  var SAMPLE_MAX = 16;
 
   var GREEN = "#00FF88";
   var AMBER = "#FFB000";
@@ -36,7 +34,6 @@
   var canvas = document.getElementById("hud");
   var ctx = canvas.getContext("2d");
   var pauseOverlay = document.getElementById("pause-overlay");
-  var muteBtn = document.getElementById("mute-btn");
   var bestReadout = document.getElementById("best-readout");
   var calibrateCopy = document.getElementById("calibrate-copy");
   var overStats = document.getElementById("over-stats");
@@ -48,14 +45,26 @@
     ArrowRight: false,
   };
 
-  var muted = false;
   var demoMode = true;
   var gotOrientation = false;
+  var gotMotion = false;
   var orientationListening = false;
+  var motionListening = false;
+  var rawAlpha = 0;
   var rawBeta = 0;
-  var rawGamma = 0;
+  var rawYawRate = 0;
+  var rawPitchRate = 0;
+  var alpha0 = 0;
   var beta0 = 0;
-  var gamma0 = 0;
+  var sampleAlpha = [];
+  var sampleBeta = [];
+
+  var lookYawDeg = 0;
+  var lookPitchDeg = 0;
+  var lookX = 0;
+  var lookY = 0;
+  var euroX = null;
+  var euroY = null;
 
   var running = false;
   var paused = false;
@@ -72,17 +81,6 @@
   var locked = false;
   var killFlash = 0;
   var bandit = null;
-  var aimX = 300;
-  var aimY = 300;
-  var targetAimX = 300;
-  var targetAimY = 300;
-  var demoX = 300;
-  var demoY = 300;
-
-  var audioCtx = null;
-  var masterGain = null;
-  var bed = null;
-  var lockTone = null;
 
   function pad(n, width) {
     var s = String(Math.max(0, Math.floor(n)));
@@ -94,13 +92,28 @@
     return v < lo ? lo : v > hi ? hi : v;
   }
 
-  function deadzone(v, dz) {
-    if (Math.abs(v) < dz) return 0;
-    return v > 0 ? v - dz : v + dz;
-  }
-
   function hypot(ax, ay) {
     return Math.sqrt(ax * ax + ay * ay);
+  }
+
+  function wrapDelta(a, b) {
+    var d = a - b;
+    while (d > 180) d -= 360;
+    while (d < -180) d += 360;
+    return d;
+  }
+
+  function meanAngle(values) {
+    if (!values.length) return 0;
+    var x = 0;
+    var y = 0;
+    var i;
+    for (i = 0; i < values.length; i++) {
+      var rad = (values[i] * Math.PI) / 180;
+      x += Math.cos(rad);
+      y += Math.sin(rad);
+    }
+    return (Math.atan2(y / values.length, x / values.length) * 180) / Math.PI;
   }
 
   function mulberry32(seed) {
@@ -112,6 +125,46 @@
       t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
       return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
     };
+  }
+
+  function createEuro(minCutoff, beta) {
+    return {
+      minCutoff: minCutoff,
+      beta: beta,
+      dcutoff: 1,
+      x: null,
+      dx: 0,
+    };
+  }
+
+  function euroAlpha(dt, cutoff) {
+    var tau = 1 / (2 * Math.PI * cutoff);
+    return 1 / (1 + tau / dt);
+  }
+
+  function filterEuro(filter, value, dt) {
+    if (dt <= 0) return filter.x == null ? value : filter.x;
+    if (filter.x == null) {
+      filter.x = value;
+      filter.dx = 0;
+      return value;
+    }
+    var edx = (value - filter.x) / dt;
+    var ad = euroAlpha(dt, filter.dcutoff);
+    filter.dx = ad * edx + (1 - ad) * filter.dx;
+    var cutoff = filter.minCutoff + filter.beta * Math.abs(filter.dx);
+    var a = euroAlpha(dt, cutoff);
+    filter.x = a * value + (1 - a) * filter.x;
+    return filter.x;
+  }
+
+  function resetLookFilters() {
+    euroX = createEuro(1.2, 0.04);
+    euroY = createEuro(1.2, 0.04);
+    lookYawDeg = 0;
+    lookPitchDeg = 0;
+    lookX = 0;
+    lookY = 0;
   }
 
   function readBest() {
@@ -128,31 +181,8 @@
     } catch (err) {}
   }
 
-  function readMuted() {
-    try {
-      return localStorage.getItem(MUTE_KEY) === "1";
-    } catch (err) {
-      return false;
-    }
-  }
-
-  function writeMuted(value) {
-    try {
-      localStorage.setItem(MUTE_KEY, value ? "1" : "0");
-    } catch (err) {}
-  }
-
   function updateBestReadout() {
     if (bestReadout) bestReadout.textContent = "BEST " + pad(best, 5);
-  }
-
-  function updateMuteButton() {
-    if (muteBtn) muteBtn.textContent = muted ? "UNMUTE" : "MUTE";
-  }
-
-  function applyMasterMute() {
-    if (!masterGain || !audioCtx) return;
-    masterGain.gain.setTargetAtTime(muted ? 0 : 1, audioCtx.currentTime, 0.04);
   }
 
   function collectScreens() {
@@ -208,205 +238,81 @@
     focusables[next].focus();
   }
 
-  function ensureAudio() {
-    var AC = window.AudioContext || window.webkitAudioContext;
-    if (!AC) return null;
-    if (!audioCtx) {
-      audioCtx = new AC();
-      masterGain = audioCtx.createGain();
-      masterGain.gain.value = muted ? 0 : 1;
-      masterGain.connect(audioCtx.destination);
-    }
-    if (audioCtx.state === "suspended") audioCtx.resume();
-    applyMasterMute();
-    return audioCtx;
-  }
-
-  function startBed() {
-    if (!audioCtx || bed) return;
-    var g = audioCtx.createGain();
-    g.gain.value = 0.045;
-    g.connect(masterGain);
-
-    var oscA = audioCtx.createOscillator();
-    var oscB = audioCtx.createOscillator();
-    oscA.type = "square";
-    oscB.type = "square";
-    oscA.frequency.value = 110;
-    oscB.frequency.value = 146.83;
-
-    var gA = audioCtx.createGain();
-    var gB = audioCtx.createGain();
-    gA.gain.value = 0.7;
-    gB.gain.value = 0.05;
-    oscA.connect(gA);
-    oscB.connect(gB);
-    gA.connect(g);
-    gB.connect(g);
-    oscA.start();
-    oscB.start();
-
-    bed = { oscA: oscA, oscB: oscB, gA: gA, gB: gB, g: g, step: -1 };
-  }
-
-  function updateBed(now) {
-    if (!bed || !audioCtx) return;
-    var step = Math.floor(now / 380) % 4;
-    if (step === bed.step) return;
-    bed.step = step;
-    var a = step % 2 === 0;
-    bed.gA.gain.setTargetAtTime(a ? 0.7 : 0.08, audioCtx.currentTime, 0.03);
-    bed.gB.gain.setTargetAtTime(a ? 0.08 : 0.7, audioCtx.currentTime, 0.03);
-  }
-
-  function duckBed(isPaused) {
-    if (!bed || !audioCtx) return;
-    bed.g.gain.setTargetAtTime(isPaused ? 0.012 : 0.045, audioCtx.currentTime, 0.08);
-  }
-
-  function startLockTone() {
-    if (!audioCtx || lockTone) return;
-    var osc = audioCtx.createOscillator();
-    var g = audioCtx.createGain();
-    osc.type = "square";
-    osc.frequency.value = 196;
-    g.gain.value = 0;
-    osc.connect(g);
-    g.connect(masterGain);
-    osc.start();
-    lockTone = { osc: osc, g: g };
-  }
-
-  function updateLockTone() {
-    if (!lockTone || !audioCtx) return;
-    var freq = 196 + lockMeter * 392;
-    lockTone.osc.frequency.setTargetAtTime(freq, audioCtx.currentTime, 0.04);
-    var vol = 0;
-    if (!paused && lockMeter > 0.02) {
-      vol =
-        locked && lockMeter > 0.92
-          ? 0.07 + 0.03 * Math.sin(performance.now() / 80)
-          : 0.045;
-    }
-    lockTone.g.gain.setTargetAtTime(vol, audioCtx.currentTime, 0.05);
-  }
-
-  function stopLockTone() {
-    if (!lockTone) return;
-    try {
-      lockTone.osc.stop();
-    } catch (err) {}
-    lockTone = null;
-  }
-
-  function stopBed() {
-    if (!bed) return;
-    try {
-      bed.oscA.stop();
-      bed.oscB.stop();
-    } catch (err) {}
-    bed = null;
-  }
-
-  function playNoiseBurst() {
-    if (!audioCtx) return;
-    var dur = 0.18;
-    var buffer = audioCtx.createBuffer(1, Math.floor(audioCtx.sampleRate * dur), audioCtx.sampleRate);
-    var data = buffer.getChannelData(0);
-    var i;
-    for (i = 0; i < data.length; i++) {
-      data[i] = (Math.random() * 2 - 1) * (1 - i / data.length);
-    }
-    var src = audioCtx.createBufferSource();
-    var g = audioCtx.createGain();
-    src.buffer = buffer;
-    g.gain.value = 0.12;
-    src.connect(g);
-    g.connect(masterGain);
-    src.start();
-  }
-
-  function playArpeggio() {
-    if (!audioCtx) return;
-    var notes = [523.25, 659.25, 783.99];
-    notes.forEach(function (freq, i) {
-      var osc = audioCtx.createOscillator();
-      var g = audioCtx.createGain();
-      var t = audioCtx.currentTime + i * 0.07;
-      osc.type = "square";
-      osc.frequency.value = freq;
-      g.gain.setValueAtTime(0.08, t);
-      g.gain.exponentialRampToValueAtTime(0.001, t + 0.16);
-      osc.connect(g);
-      g.connect(masterGain);
-      osc.start(t);
-      osc.stop(t + 0.18);
-    });
-  }
-
-  function playKill() {
-    playNoiseBurst();
-    playArpeggio();
-  }
-
-  function playLost() {
-    if (!audioCtx) return;
-    var osc = audioCtx.createOscillator();
-    var g = audioCtx.createGain();
-    var t = audioCtx.currentTime;
-    osc.type = "sawtooth";
-    osc.frequency.setValueAtTime(330, t);
-    osc.frequency.exponentialRampToValueAtTime(80, t + 0.55);
-    g.gain.setValueAtTime(0.09, t);
-    g.gain.exponentialRampToValueAtTime(0.001, t + 0.55);
-    osc.connect(g);
-    g.connect(masterGain);
-    osc.start(t);
-    osc.stop(t + 0.58);
+  function pushSample(list, value) {
+    list.push(value);
+    if (list.length > SAMPLE_MAX) list.shift();
   }
 
   function onOrient(event) {
-    if (event.beta == null || event.gamma == null) return;
+    if (event.alpha == null || event.beta == null) return;
     gotOrientation = true;
+    rawAlpha = event.alpha;
     rawBeta = event.beta;
-    rawGamma = event.gamma;
+    pushSample(sampleAlpha, rawAlpha);
+    pushSample(sampleBeta, rawBeta);
+  }
+
+  function onMotion(event) {
+    if (!event.rotationRate) return;
+    var rate = event.rotationRate;
+    if (rate.alpha == null && rate.beta == null) return;
+    gotMotion = true;
+    rawYawRate = rate.alpha || 0;
+    rawPitchRate = rate.beta || 0;
   }
 
   function startSensors() {
-    if (orientationListening) return;
-    window.addEventListener("deviceorientation", onOrient);
-    orientationListening = true;
+    if (!orientationListening) {
+      window.addEventListener("deviceorientation", onOrient);
+      orientationListening = true;
+    }
+    if (!motionListening) {
+      window.addEventListener("devicemotion", onMotion);
+      motionListening = true;
+    }
   }
 
   function stopSensors() {
-    if (!orientationListening) return;
-    window.removeEventListener("deviceorientation", onOrient);
-    orientationListening = false;
+    if (orientationListening) {
+      window.removeEventListener("deviceorientation", onOrient);
+      orientationListening = false;
+    }
+    if (motionListening) {
+      window.removeEventListener("devicemotion", onMotion);
+      motionListening = false;
+    }
+    rawYawRate = 0;
+    rawPitchRate = 0;
   }
 
-  function requestOrientation() {
-    return new Promise(function (resolve) {
-      if (typeof DeviceOrientationEvent === "undefined") {
-        resolve(false);
-        return;
+  function requestPerm(api) {
+    if (!api || typeof api.requestPermission !== "function") {
+      return Promise.resolve(typeof api !== "undefined");
+    }
+    return api.requestPermission().then(
+      function (state) {
+        return state === "granted";
+      },
+      function () {
+        return false;
       }
-      if (typeof DeviceOrientationEvent.requestPermission === "function") {
-        DeviceOrientationEvent.requestPermission()
-          .then(function (state) {
-            resolve(state === "granted");
-          })
-          .catch(function () {
-            resolve(false);
-          });
-      } else {
-        resolve(true);
-      }
+    );
+  }
+
+  function requestSensors() {
+    var hasOrient = typeof DeviceOrientationEvent !== "undefined";
+    if (!hasOrient) return Promise.resolve(false);
+    return requestPerm(DeviceOrientationEvent).then(function (ok) {
+      if (!ok) return false;
+      return requestPerm(DeviceMotionEvent).then(function () {
+        return true;
+      });
     });
   }
 
   function lockRadius() {
     if (wave <= 3) return BASE_RADIUS;
-    return Math.max(38, BASE_RADIUS - (wave - 3) * 2.5);
+    return Math.max(46, BASE_RADIUS - (wave - 3) * 2);
   }
 
   function spawnBandit() {
@@ -506,22 +412,34 @@
     bandit.y = clamp(y, TARGET_TOP, SIZE - TARGET_BOTTOM);
   }
 
-  function updateAim(dt) {
+  function banditScreen() {
+    if (!bandit) return { x: 300, y: 320 };
+    return { x: bandit.x - lookX, y: bandit.y - lookY };
+  }
+
+  function updateLook(dt) {
     if (demoMode) {
-      if (keys.ArrowLeft) demoX -= DEMO_SPEED * dt;
-      if (keys.ArrowRight) demoX += DEMO_SPEED * dt;
-      if (keys.ArrowUp) demoY -= DEMO_SPEED * dt;
-      if (keys.ArrowDown) demoY += DEMO_SPEED * dt;
-      demoX = clamp(demoX, AIM_PAD, SIZE - AIM_PAD);
-      demoY = clamp(demoY, AIM_PAD, SIZE - AIM_PAD);
-      targetAimX = demoX;
-      targetAimY = demoY;
+      if (keys.ArrowLeft) lookYawDeg -= DEMO_LOOK_SPEED * dt;
+      if (keys.ArrowRight) lookYawDeg += DEMO_LOOK_SPEED * dt;
+      if (keys.ArrowUp) lookPitchDeg -= DEMO_LOOK_SPEED * dt;
+      if (keys.ArrowDown) lookPitchDeg += DEMO_LOOK_SPEED * dt;
+      lookYawDeg = clamp(lookYawDeg, -28, 28);
+      lookPitchDeg = clamp(lookPitchDeg, -28, 28);
     } else {
-      targetAimX = clamp(300 + deadzone(rawGamma - gamma0, DEADZONE) * SENSITIVITY, AIM_PAD, SIZE - AIM_PAD);
-      targetAimY = clamp(300 + deadzone(rawBeta - beta0, DEADZONE) * SENSITIVITY, AIM_PAD, SIZE - AIM_PAD);
+      var orientYaw = wrapDelta(rawAlpha, alpha0);
+      var orientPitch = wrapDelta(rawBeta, beta0);
+      if (gotMotion) {
+        lookYawDeg = COMPLEMENT * (lookYawDeg + rawYawRate * dt) + (1 - COMPLEMENT) * orientYaw;
+        lookPitchDeg =
+          COMPLEMENT * (lookPitchDeg + rawPitchRate * dt) + (1 - COMPLEMENT) * orientPitch;
+      } else {
+        lookYawDeg = orientYaw;
+        lookPitchDeg = orientPitch;
+      }
     }
-    aimX += (targetAimX - aimX) * AIM_LERP;
-    aimY += (targetAimY - aimY) * AIM_LERP;
+
+    lookX = filterEuro(euroX, lookYawDeg * SENSITIVITY, dt);
+    lookY = filterEuro(euroY, lookPitchDeg * SENSITIVITY, dt);
   }
 
   function killBandit() {
@@ -533,16 +451,12 @@
     }
     wave += 1;
     killFlash = 0.45;
-    playKill();
     spawnBandit();
   }
 
   function finishRun() {
     stopLoop();
     stopSensors();
-    stopLockTone();
-    duckBed(true);
-    playLost();
     if (score > best) {
       best = score;
       writeBest(best);
@@ -560,8 +474,9 @@
     updateBandit(dt);
     killFlash = Math.max(0, killFlash - dt);
 
+    var screen = banditScreen();
     var radius = lockRadius();
-    var dist = hypot(aimX - bandit.x, aimY - bandit.y);
+    var dist = hypot(300 - screen.x, 300 - screen.y);
     locked = dist < radius;
 
     if (grace > 0) {
@@ -632,7 +547,9 @@
     c.stroke();
   }
 
-  function drawPipper(c, x, y) {
+  function drawPipper(c) {
+    var x = 300;
+    var y = 300;
     c.strokeStyle = CYAN;
     c.lineWidth = 2;
     c.beginPath();
@@ -650,6 +567,23 @@
     c.stroke();
     c.fillStyle = CYAN;
     c.fillRect(x - 1.5, y - 1.5, 3, 3);
+  }
+
+  function drawOffscreenCue(c, sx, sy) {
+    var mx = clamp(sx, 36, SIZE - 36);
+    var my = clamp(sy, 100, SIZE - 36);
+    var dx = sx - 300;
+    var dy = sy - 300;
+    var len = hypot(dx, dy) || 1;
+    c.strokeStyle = AMBER;
+    c.lineWidth = 2;
+    c.beginPath();
+    c.moveTo(mx - (dx / len) * 10, my - (dy / len) * 10);
+    c.lineTo(mx, my);
+    c.lineTo(mx - (dx / len) * 10 + (-dy / len) * 6, my - (dy / len) * 10 + (dx / len) * 6);
+    c.moveTo(mx, my);
+    c.lineTo(mx - (dx / len) * 10 - (-dy / len) * 6, my - (dy / len) * 10 - (dx / len) * 6);
+    c.stroke();
   }
 
   function drawHud() {
@@ -704,17 +638,24 @@
     ctx.fillRect(barX + 1, barY + 1, (barW - 2) * clamp(lockMeter, 0, 1), barH - 2);
 
     if (bandit) {
-      var dist = hypot(aimX - bandit.x, aimY - bandit.y);
+      var screen = banditScreen();
+      var onScreen =
+        screen.x > 20 && screen.x < SIZE - 20 && screen.y > 92 && screen.y < SIZE - 20;
       var radius = lockRadius();
-      ctx.strokeStyle = locked || killFlash > 0 ? RED : GREEN;
-      ctx.lineWidth = 2;
-      drawDiamond(ctx, bandit.x, bandit.y, 14);
-      if (dist < radius * 1.65) {
-        drawLockBox(ctx, bandit.x, bandit.y, 34 + (1 - clamp(lockMeter, 0, 1)) * 8);
+      var dist = hypot(300 - screen.x, 300 - screen.y);
+      if (onScreen) {
+        ctx.strokeStyle = locked || killFlash > 0 ? RED : GREEN;
+        ctx.lineWidth = 2;
+        drawDiamond(ctx, screen.x, screen.y, 14);
+        if (dist < radius * 1.65) {
+          drawLockBox(ctx, screen.x, screen.y, 34 + (1 - clamp(lockMeter, 0, 1)) * 8);
+        }
+      } else {
+        drawOffscreenCue(ctx, screen.x, screen.y);
       }
     }
 
-    drawPipper(ctx, aimX, aimY);
+    drawPipper(ctx);
 
     if (!paused && grace <= 0 && unlockedTime > 2.2) {
       ctx.fillStyle = RED;
@@ -730,11 +671,9 @@
     var dt = Math.min(0.05, (now - lastTs) / 1000);
     lastTs = now;
 
-    updateAim(dt);
+    updateLook(dt);
     if (!paused) updateSim(dt);
     drawHud();
-    updateBed(now);
-    updateLockTone();
 
     if (running) rafId = requestAnimationFrame(tick);
   }
@@ -761,28 +700,22 @@
     grace = SPAWN_GRACE;
     locked = false;
     killFlash = 0;
-    aimX = 300;
-    aimY = 300;
-    targetAimX = 300;
-    targetAimY = 300;
-    demoX = 300;
-    demoY = 300;
+    resetLookFilters();
     spawnBandit();
   }
 
   function beginSession() {
-    ensureAudio();
-    startBed();
-    startLockTone();
-    duckBed(false);
-    requestOrientation().then(function (ok) {
+    requestSensors().then(function (ok) {
       demoMode = !ok;
       gotOrientation = false;
+      gotMotion = false;
+      sampleAlpha = [];
+      sampleBeta = [];
       startSensors();
       if (calibrateCopy) {
         calibrateCopy.textContent = demoMode
-          ? "DEMO MODE. Arrows aim. Enter to start."
-          : "Look forward. Enter to zero the pipper.";
+          ? "DEMO MODE. Arrows look around. Enter to start."
+          : "Look forward. Enter to zero your aim.";
       }
       navigateTo("calibrate");
     });
@@ -790,8 +723,8 @@
 
   function startHunt() {
     if (!demoMode && !gotOrientation) demoMode = true;
-    beta0 = rawBeta;
-    gamma0 = rawGamma;
+    alpha0 = sampleAlpha.length ? meanAngle(sampleAlpha) : rawAlpha;
+    beta0 = sampleBeta.length ? meanAngle(sampleBeta) : rawBeta;
     resetRunState();
     paused = false;
     pauseOverlay.classList.add("hidden");
@@ -803,7 +736,6 @@
     if (!running || paused) return;
     paused = true;
     pauseOverlay.classList.remove("hidden");
-    duckBed(true);
     focusFirst(pauseOverlay);
   }
 
@@ -811,26 +743,16 @@
     if (!paused) return;
     paused = false;
     pauseOverlay.classList.add("hidden");
-    duckBed(false);
     lastTs = 0;
   }
 
   function quitToTitle() {
     stopLoop();
     stopSensors();
-    stopLockTone();
-    stopBed();
     paused = false;
     pauseOverlay.classList.add("hidden");
     updateBestReadout();
     navigateTo("home");
-  }
-
-  function setMuted(value) {
-    muted = value;
-    writeMuted(muted);
-    updateMuteButton();
-    applyMasterMute();
   }
 
   function handleAction(action) {
@@ -853,9 +775,6 @@
         break;
       case "quit":
         quitToTitle();
-        break;
-      case "mute":
-        setMuted(!muted);
         break;
       default:
         break;
@@ -924,9 +843,7 @@
   }
 
   best = readBest();
-  muted = readMuted();
   updateBestReadout();
-  updateMuteButton();
   collectScreens();
   fitCanvas();
   navigateTo("home");
