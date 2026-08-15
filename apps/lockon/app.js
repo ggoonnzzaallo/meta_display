@@ -9,13 +9,14 @@
     SELECT: "Enter",
   };
 
+  var BUILD = "v19";
   var SIZE = 600;
   var YAW_MIN = -24;
   var YAW_MAX = 24;
   var PITCH_MIN = 1;
   var PITCH_MAX = 12;
   var PX_PER_DEG = 16;
-  var PITCH_SIGN = -1;
+  var PITCH_SIGN = 1;
   var LOOK_SCALE = 0.3;
   var HEAD_YAW_MAX = 90;
   var HEAD_PITCH_MIN = -80;
@@ -230,7 +231,9 @@
 
   function debugText() {
     return [
-      (demoMode ? "DEMO" : "LIVE") +
+      BUILD +
+        "  " +
+        (demoMode ? "DEMO" : "LIVE") +
         "  O:" +
         orientHz +
         "Hz/" +
@@ -857,7 +860,7 @@
     ctx.font = "bold 18px ui-monospace, SF Mono, Menlo, Consolas, monospace";
     ctx.fillStyle = GREEN;
     ctx.textAlign = "left";
-    ctx.fillText("WAVE " + pad(wave, 2), 24, 36);
+    ctx.fillText("WAVE " + pad(wave, 2) + "  " + BUILD, 24, 36);
     ctx.textAlign = "right";
     ctx.fillText("SCORE " + pad(score, 5), 576, 36);
 
@@ -1181,6 +1184,9 @@
 
   best = readBest();
   updateBestReadout();
+  document.querySelectorAll(".build").forEach(function (el) {
+    el.textContent = el.classList.contains("header-build") ? BUILD : "BUILD " + BUILD;
+  });
   collectScreens();
   fitCanvas();
   navigateTo("home");

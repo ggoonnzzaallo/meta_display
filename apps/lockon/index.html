@@ -5,10 +5,10 @@
   <meta name="viewport" content="width=600, height=600, initial-scale=1.0, user-scalable=no">
   <meta name="description" content="80s jet HUD: tilt your head to keep lock on a moving bandit.">
   <meta name="mrbd-web-app-capable" content="yes">
-  <title>LOCK ON</title>
+  <title>LOCK ON v19</title>
   <link rel="icon" href="favicon.png" sizes="128x128" type="image/png">
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css?v=19">
 </head>
 <body>
   <div id="app">
@@ -16,6 +16,7 @@
       <div class="title-block">
         <p class="title-tag">HEAD-TILT INTERCEPT</p>
         <h1>LOCK ON</h1>
+        <p class="build">BUILD v19</p>
         <p id="best-readout" class="best-readout">BEST 00000</p>
       </div>
       <div class="menu">
@@ -27,6 +28,7 @@
     <section id="how" class="screen hidden" aria-label="How to play">
       <header class="header">
         <h1>HOW</h1>
+        <span class="build header-build">v19</span>
       </header>
       <div class="content">
         <ul class="facts">
@@ -41,6 +43,7 @@
     <section id="calibrate" class="screen hidden" aria-label="Zero aim">
       <header class="header">
         <h1>ZERO AIM</h1>
+        <span class="build header-build">v19</span>
       </header>
       <div class="content">
         <p id="calibrate-copy" class="lede">Look straight ahead. Enter sets yaw and pitch to 0.</p>
@@ -54,6 +57,7 @@
       <div id="pause-overlay" class="overlay hidden">
         <div class="panel">
           <h2>PAUSED</h2>
+          <p class="build">BUILD v19</p>
           <button class="focusable" data-action="resume">RESUME</button>
           <button class="focusable" data-action="quit">QUIT</button>
         </div>
@@ -63,6 +67,7 @@
     <section id="over" class="screen hidden" aria-label="Contact lost">
       <header class="header">
         <h1>CONTACT LOST</h1>
+        <span class="build header-build">v19</span>
       </header>
       <div class="content">
         <p id="over-stats" class="over-stats">SCORE 00000<br>WAVE 01<br>BEST 00000</p>
@@ -71,6 +76,6 @@
       </div>
     </section>
   </div>
-  <script src="app.js"></script>
+  <script src="app.js?v=19"></script>
 </body>
 </html>

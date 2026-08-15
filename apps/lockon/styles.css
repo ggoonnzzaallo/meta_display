@@ -99,8 +99,20 @@ body {
   line-height: 1;
 }
 
+.build {
+  margin-top: 10px;
+  font-size: 16px;
+  letter-spacing: 0.2em;
+  color: var(--hud-amber);
+}
+
+.header-build {
+  margin-top: 0;
+  font-size: 14px;
+}
+
 .best-readout {
-  margin-top: 14px;
+  margin-top: 10px;
   font-size: 16px;
   letter-spacing: 0.16em;
   color: var(--hud-cyan);
