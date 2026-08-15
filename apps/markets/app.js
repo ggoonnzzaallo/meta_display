@@ -136,11 +136,12 @@
     var scroll = terminalEl.scrollTop;
 
     terminalEl.innerHTML = "";
-    state.visible.forEach(function (item) {
+    state.visible.forEach(function (item, index) {
       var row = document.createElement("button");
       row.type = "button";
       row.className = ("row focusable " + kindOf(item)).trim();
       row.setAttribute("data-id", item.id);
+      row.setAttribute("data-index", String(index));
       var meta = document.createElement("div");
       meta.className = "row-meta";
       fillMeta(meta, item);
@@ -153,9 +154,14 @@
     });
 
     terminalEl.scrollTop = opts.stickToTop ? 0 : scroll;
-    if (keepId && currentScreen === "home") {
-      var keepEl = terminalEl.querySelector('[data-id="' + keepId + '"]');
+    if (currentScreen === "home") {
+      var keepEl = keepId
+        ? terminalEl.querySelector('[data-id="' + keepId + '"]')
+        : null;
       if (keepEl) keepEl.focus();
+      else if (!terminalEl.contains(document.activeElement)) {
+        focusFirst(screens.home);
+      }
     }
   }
 
@@ -346,13 +352,18 @@
     if (detailBackEl) detailBackEl.focus();
   }
 
+  function itemFromRow(row) {
+    if (!row) return null;
+    var idx = Number(row.getAttribute("data-index"));
+    if (idx >= 0 && idx < state.visible.length) return state.visible[idx];
+    return findItem(row.getAttribute("data-id"));
+  }
+
   function openFocusedRow() {
     if (currentScreen !== "home") return;
     var el = document.activeElement;
     if (!el || !terminalEl.contains(el)) return;
-    var id = el.getAttribute("data-id");
-    if (!id) return;
-    openDetail(findItem(id));
+    openDetail(itemFromRow(el));
   }
 
   function openDetail(item) {
@@ -417,17 +428,17 @@
     goHome();
   });
 
-  terminalEl.addEventListener("pointerdown", function (event) {
-    var row = event.target.closest("[data-id]");
-    if (!row) return;
-    if (event.pointerType === "mouse") {
-      row.focus();
-      return;
-    }
-    event.preventDefault();
-  });
+  terminalEl.addEventListener(
+    "pointerdown",
+    function (event) {
+      event.preventDefault();
+    },
+    true
+  );
 
-  terminalEl.addEventListener("click", function () {
+  terminalEl.addEventListener("click", function (event) {
+    event.preventDefault();
+    event.stopPropagation();
     openFocusedRow();
   });
 
