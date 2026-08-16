@@ -17,6 +17,7 @@
     { name: "Merge", href: "apps/merge/" },
     { name: "Putt", href: "apps/putt/" },
     { name: "Trio", href: "apps/trio/" },
+    { name: "Court", href: "apps/court/" },
     { name: "Situation", href: "apps/situation/" },
     { name: "Markets", href: "apps/markets/" },
     { name: "Lock On", href: "apps/lockon/" },

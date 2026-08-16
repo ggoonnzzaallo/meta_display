@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=600, height=600, initial-scale=1.0, user-scalable=no">
+  <meta name="description" content="Hold court: swipe left or right on petitions. Keep faith, folk, arms, and coin in balance.">
+  <meta name="mrbd-web-app-capable" content="yes">
+  <title>COURT v1</title>
+  <link rel="icon" href="favicon.png" sizes="128x128" type="image/png">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="stylesheet" href="styles.css?v=1">
+</head>
+<body>
+  <div id="app">
+    <section id="home" class="screen" aria-label="COURT title">
+      <div class="title-block">
+        <p class="title-tag">HOLD COURT</p>
+        <h1>COURT</h1>
+        <p class="best-readout">BUILD v1</p>
+        <p id="best-readout" class="best-readout">BEST 00 YR</p>
+      </div>
+      <div class="menu">
+        <button class="focusable" data-action="play">PLAY</button>
+        <button class="focusable" data-action="how">HOW</button>
+      </div>
+    </section>
+
+    <section id="how" class="screen hidden" aria-label="How to play">
+      <header class="header">
+        <h1>HOW</h1>
+      </header>
+      <div class="content">
+        <ul class="facts">
+          <li>Swipe left or right to answer. Both choices are on the card.</li>
+          <li>A mark on a meter means that choice will move it. You will not see which way.</li>
+          <li>Faith, folk, arms, coin. Empty or full ends the reign. Back pauses.</li>
+        </ul>
+        <button class="focusable" data-action="home">BACK</button>
+      </div>
+    </section>
+
+    <section id="play" class="screen screen-play hidden" aria-label="Court">
+      <div class="play-ui">
+        <div id="meters" class="meters"></div>
+        <div class="card">
+          <p id="who" class="who">STEWARD</p>
+          <p id="say" class="say">The harvest is late.</p>
+          <div class="choices">
+            <p id="left-label" class="choice"><span class="dir">L</span> KEEP</p>
+            <p id="right-label" class="choice"><span class="dir">R</span> OPEN</p>
+          </div>
+        </div>
+        <div class="year-bar">
+          <span id="year-readout">YEAR 00</span>
+          <span>SWIPE L/R</span>
+        </div>
+      </div>
+      <button id="play-btn" class="focusable play-hotspot" data-action="hold" aria-label="Play"></button>
+      <div id="pause-overlay" class="overlay hidden">
+        <div class="panel">
+          <h2>PAUSED</h2>
+          <button class="focusable" data-action="resume">RESUME</button>
+          <button class="focusable" data-action="quit">QUIT</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="over" class="screen hidden" aria-label="Reign ended">
+      <header class="header">
+        <h1>FALLEN</h1>
+      </header>
+      <div class="content">
+        <p id="over-stats" class="over-stats">YEAR 00<br>BEST 00</p>
+        <p id="over-cause" class="over-cause">The reign ends.</p>
+        <button class="focusable" data-action="again">AGAIN</button>
+        <button class="focusable" data-action="home">HOME</button>
+      </div>
+    </section>
+  </div>
+  <script src="app.js?v=1"></script>
+</body>
+</html>
