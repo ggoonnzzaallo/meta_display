@@ -29,6 +29,7 @@
   var canvas = document.getElementById("hud");
   var ctx = canvas.getContext("2d");
   var pauseOverlay = document.getElementById("pause-overlay");
+  var playBtn = document.getElementById("play-btn");
   var bestReadout = document.getElementById("best-readout");
   var overStats = document.getElementById("over-stats");
 
@@ -43,7 +44,24 @@
   var walls = [];
   var nextSpawn = 0;
   var flash = 0;
-  var keys = { left: false, right: false };
+  var dragX = null;
+  var STEP = TAU / 6;
+
+  function playKey(event) {
+    var k = event.key;
+    var c = event.keyCode;
+    if (k === "ArrowUp" || k === "Up" || c === 38) return "up";
+    if (k === "ArrowDown" || k === "Down" || c === 40) return "down";
+    if (k === "ArrowLeft" || k === "Left" || c === 37) return "left";
+    if (k === "ArrowRight" || k === "Right" || c === 39) return "right";
+    if (k === "Enter" || c === 13) return "enter";
+    if (k === "Escape" || c === 27) return "escape";
+    return "";
+  }
+
+  function focusPlay() {
+    if (playBtn) playBtn.focus();
+  }
 
   function pad(n, width) {
     var s = String(Math.max(0, Math.floor(n)));
@@ -92,7 +110,8 @@
     if (!screens[screenId]) return;
     screens[screenId].classList.remove("hidden");
     currentScreen = screenId;
-    if (screenId !== "play") focusFirst(screens[screenId]);
+    if (screenId === "play") focusPlay();
+    else focusFirst(screens[screenId]);
   }
 
   function moveFocus(direction) {
@@ -162,8 +181,7 @@
     nextSpawn = 0.55;
     flash = 0;
     lastTs = 0;
-    keys.left = false;
-    keys.right = false;
+    dragX = null;
     pauseOverlay.classList.add("hidden");
     navigateTo("play");
     loop();
@@ -172,8 +190,7 @@
   function pauseRun() {
     if (!running || paused) return;
     paused = true;
-    keys.left = false;
-    keys.right = false;
+    dragX = null;
     pauseOverlay.classList.remove("hidden");
     focusFirst(pauseOverlay);
   }
@@ -182,14 +199,15 @@
     if (!running || !paused) return;
     paused = false;
     lastTs = 0;
+    dragX = null;
     pauseOverlay.classList.add("hidden");
+    focusPlay();
   }
 
   function stopLoop() {
     running = false;
     paused = false;
-    keys.left = false;
-    keys.right = false;
+    dragX = null;
     if (rafId) cancelAnimationFrame(rafId);
     rafId = 0;
     pauseOverlay.classList.add("hidden");
@@ -209,11 +227,13 @@
     navigateTo("over");
   }
 
+  function rotateBy(steps) {
+    playerAngle = wrapAngle(playerAngle + steps * STEP);
+  }
+
   function update(dt) {
     time += dt;
     if (flash > 0) flash -= dt;
-    var turn = (keys.right ? 1 : 0) - (keys.left ? 1 : 0);
-    playerAngle = wrapAngle(playerAngle + turn * 4.15 * dt);
 
     nextSpawn -= dt;
     if (nextSpawn <= 0) {
@@ -314,7 +334,7 @@
     ctx.fillText("GATES " + pad(score, 5), 28, 45);
     ctx.fillStyle = RED;
     ctx.font = "700 14px ui-monospace, monospace";
-    ctx.fillText("1 HIT", 500, 45);
+    ctx.fillText("TAP L/R", 500, 45);
   }
 
   function loop(ts) {
@@ -329,18 +349,20 @@
     draw();
   }
 
-  function handlePlayKeyDown(event) {
-    if (event.key === DPAD.BACK || event.key === DPAD.SELECT) {
+  function handlePlayKey(event) {
+    var key = playKey(event);
+    if (key === "escape") {
       pauseRun();
       return;
     }
-    if (event.key === DPAD.LEFT) keys.left = true;
-    if (event.key === DPAD.RIGHT) keys.right = true;
-  }
-
-  function handlePlayKeyUp(event) {
-    if (event.key === DPAD.LEFT) keys.left = false;
-    if (event.key === DPAD.RIGHT) keys.right = false;
+    if (key === "enter") {
+      focusPlay();
+      return;
+    }
+    if (event.repeat) return;
+    if (key === "left" || key === "up") rotateBy(-1);
+    if (key === "right" || key === "down") rotateBy(1);
+    focusPlay();
   }
 
   function handleAction(action) {
@@ -350,11 +372,12 @@
       stopLoop();
       navigateTo("home");
     } else if (action === "resume") resumeRun();
+    else if (action === "hold") focusPlay();
   }
 
   document.addEventListener("keydown", function (event) {
     if (currentScreen === "play" && running && !paused) {
-      handlePlayKeyDown(event);
+      handlePlayKey(event);
       event.preventDefault();
       return;
     }
@@ -389,8 +412,25 @@
     event.preventDefault();
   });
 
-  document.addEventListener("keyup", function (event) {
-    if (currentScreen === "play" && running) handlePlayKeyUp(event);
+  document.addEventListener("pointerdown", function (event) {
+    if (currentScreen !== "play" || !running || paused) return;
+    dragX = event.clientX;
+  });
+
+  document.addEventListener("pointermove", function (event) {
+    if (dragX == null || currentScreen !== "play" || !running || paused) return;
+    var dx = event.clientX - dragX;
+    if (Math.abs(dx) < 6) return;
+    playerAngle = wrapAngle(playerAngle + dx * 0.025);
+    dragX = event.clientX;
+  });
+
+  document.addEventListener("pointerup", function () {
+    dragX = null;
+  });
+
+  document.addEventListener("pointercancel", function () {
+    dragX = null;
   });
 
   document.addEventListener("click", function (event) {

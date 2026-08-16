@@ -74,6 +74,7 @@
   var canvas = document.getElementById("hud");
   var ctx = canvas.getContext("2d");
   var pauseOverlay = document.getElementById("pause-overlay");
+  var playBtn = document.getElementById("play-btn");
   var bestReadout = document.getElementById("best-readout");
   var overStats = document.getElementById("over-stats");
 
@@ -89,7 +90,23 @@
   var lines = 0;
   var best = 0;
   var fallT = 0;
-  var hold = { left: 0, right: 0, down: 0 };
+  var dropAt = 0;
+
+  function playKey(event) {
+    var k = event.key;
+    var c = event.keyCode;
+    if (k === "ArrowUp" || k === "Up" || c === 38) return "up";
+    if (k === "ArrowDown" || k === "Down" || c === 40) return "down";
+    if (k === "ArrowLeft" || k === "Left" || c === 37) return "left";
+    if (k === "ArrowRight" || k === "Right" || c === 39) return "right";
+    if (k === "Enter" || c === 13) return "enter";
+    if (k === "Escape" || c === 27) return "escape";
+    return "";
+  }
+
+  function focusPlay() {
+    if (playBtn) playBtn.focus();
+  }
 
   function pad(n, width) {
     var s = String(Math.max(0, Math.floor(n)));
@@ -138,7 +155,8 @@
     if (!screens[screenId]) return;
     screens[screenId].classList.remove("hidden");
     currentScreen = screenId;
-    if (screenId !== "play") focusFirst(screens[screenId]);
+    if (screenId === "play") focusPlay();
+    else focusFirst(screens[screenId]);
   }
 
   function moveFocus(direction) {
@@ -271,7 +289,10 @@
   }
 
   function hardDrop() {
-    if (!piece) return;
+    if (!piece || !running || paused) return;
+    var now = performance.now();
+    if (now - dropAt < 120) return;
+    dropAt = now;
     while (move(0, 1)) score += 2;
     lockPiece();
   }
@@ -291,9 +312,7 @@
     lines = 0;
     fallT = 0;
     lastTs = 0;
-    hold.left = 0;
-    hold.right = 0;
-    hold.down = 0;
+    dropAt = 0;
     pauseOverlay.classList.add("hidden");
     navigateTo("play");
     if (!spawn()) {
@@ -306,9 +325,6 @@
   function pauseRun() {
     if (!running || paused) return;
     paused = true;
-    hold.left = 0;
-    hold.right = 0;
-    hold.down = 0;
     pauseOverlay.classList.remove("hidden");
     focusFirst(pauseOverlay);
   }
@@ -318,6 +334,7 @@
     paused = false;
     lastTs = 0;
     pauseOverlay.classList.add("hidden");
+    focusPlay();
   }
 
   function stopLoop() {
@@ -343,24 +360,8 @@
     navigateTo("over");
   }
 
-  function repeatMove(key, dt, dx) {
-    if (!hold[key]) return;
-    if (hold[key] === 0.0001) {
-      move(dx, 0);
-      hold[key] = dt;
-      return;
-    }
-    hold[key] += dt;
-    if (hold[key] > 0.18) {
-      move(dx, 0);
-      hold[key] -= 0.07;
-    }
-  }
-
   function update(dt) {
-    repeatMove("left", dt, -1);
-    repeatMove("right", dt, 1);
-    fallT += dt * (hold.down ? 7 : 1);
+    fallT += dt;
     if (fallT >= gravity()) {
       fallT = 0;
       if (!move(0, 1)) lockPiece();
@@ -425,7 +426,7 @@
     ctx.fillText("SCORE " + pad(score, 5), 352, 300);
     ctx.fillText("LINES " + pad(lines, 3), 352, 336);
     ctx.fillStyle = ORANGE;
-    ctx.fillText("ENTER DROP", 352, 400);
+    ctx.fillText("PINCH DROP", 352, 400);
 
     ctx.fillStyle = SURFACE;
     ctx.fillRect(16, 16, 568, 44);
@@ -446,23 +447,20 @@
     draw();
   }
 
-  function handlePlayKeyDown(event) {
-    if (event.key === DPAD.BACK) {
+  function handlePlayKey(event) {
+    var key = playKey(event);
+    if (key === "escape") {
       pauseRun();
       return;
     }
     if (event.repeat) return;
-    if (event.key === DPAD.LEFT) hold.left = 0.0001;
-    if (event.key === DPAD.RIGHT) hold.right = 0.0001;
-    if (event.key === DPAD.DOWN) hold.down = 1;
-    if (event.key === DPAD.UP) rotate();
-    if (event.key === DPAD.SELECT) hardDrop();
-  }
-
-  function handlePlayKeyUp(event) {
-    if (event.key === DPAD.LEFT) hold.left = 0;
-    if (event.key === DPAD.RIGHT) hold.right = 0;
-    if (event.key === DPAD.DOWN) hold.down = 0;
+    if (key === "left") move(-1, 0);
+    else if (key === "right") move(1, 0);
+    else if (key === "up") rotate();
+    else if (key === "down") {
+      if (!move(0, 1)) lockPiece();
+    } else if (key === "enter") hardDrop();
+    focusPlay();
   }
 
   function handleAction(action) {
@@ -472,11 +470,12 @@
       stopLoop();
       navigateTo("home");
     } else if (action === "resume") resumeRun();
+    else if (action === "drop") hardDrop();
   }
 
   document.addEventListener("keydown", function (event) {
     if (currentScreen === "play" && running && !paused) {
-      handlePlayKeyDown(event);
+      handlePlayKey(event);
       event.preventDefault();
       return;
     }
@@ -509,10 +508,6 @@
         return;
     }
     event.preventDefault();
-  });
-
-  document.addEventListener("keyup", function (event) {
-    if (currentScreen === "play" && running) handlePlayKeyUp(event);
   });
 
   document.addEventListener("click", function (event) {

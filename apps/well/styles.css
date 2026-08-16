@@ -185,6 +185,24 @@ body {
   display: none;
 }
 
+.play-hotspot {
+  position: absolute;
+  inset: 0;
+  min-height: 0;
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  opacity: 1;
+  letter-spacing: 0;
+}
+
+.play-hotspot:focus {
+  transform: none;
+  box-shadow: none;
+  border-color: transparent;
+  opacity: 1;
+}
+
 .panel {
   width: 488px;
   padding: 20px;

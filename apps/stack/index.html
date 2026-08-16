@@ -5,10 +5,10 @@
   <meta name="viewport" content="width=600, height=600, initial-scale=1.0, user-scalable=no">
   <meta name="description" content="Pinch to drop a sliding bar. Stack it true or the tower slips.">
   <meta name="mrbd-web-app-capable" content="yes">
-  <title>STACK</title>
+  <title>STACK v2</title>
   <link rel="icon" href="favicon.png" sizes="128x128" type="image/png">
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css?v=2">
 </head>
 <body>
   <div id="app">
@@ -16,6 +16,7 @@
       <div class="title-block">
         <p class="title-tag">PINCH TIMING</p>
         <h1>STACK</h1>
+        <p class="best-readout">BUILD v2</p>
         <p id="best-readout" class="best-readout">BEST 00000</p>
       </div>
       <div class="menu">
@@ -30,9 +31,9 @@
       </header>
       <div class="content">
         <ul class="facts">
-          <li>A bar slides left and right. Pinch or Enter to drop it.</li>
-          <li>Overhang is cut off. The next bar is only as wide as the overlap.</li>
-          <li>Miss the stack and the tower slips. Escape pauses.</li>
+          <li>A bar slides. Pinch to drop it and cut the overhang.</li>
+          <li>Down also drops. The next bar is only as wide as the overlap.</li>
+          <li>Miss the stack and the tower slips. Back / Escape pauses.</li>
         </ul>
         <button class="focusable" data-action="home">BACK</button>
       </div>
@@ -40,6 +41,7 @@
 
     <section id="play" class="screen screen-play hidden" aria-label="HUD">
       <canvas id="hud" width="600" height="600"></canvas>
+      <button id="play-btn" class="focusable play-hotspot" data-action="drop" aria-label="Drop"></button>
       <div id="pause-overlay" class="overlay hidden">
         <div class="panel">
           <h2>PAUSED</h2>
@@ -60,6 +62,6 @@
       </div>
     </section>
   </div>
-  <script src="app.js"></script>
+  <script src="app.js?v=2"></script>
 </body>
 </html>

@@ -36,8 +36,25 @@
   var canvas = document.getElementById("hud");
   var ctx = canvas.getContext("2d");
   var pauseOverlay = document.getElementById("pause-overlay");
+  var playBtn = document.getElementById("play-btn");
   var bestReadout = document.getElementById("best-readout");
   var overStats = document.getElementById("over-stats");
+
+  function playKey(event) {
+    var k = event.key;
+    var c = event.keyCode;
+    if (k === "ArrowUp" || k === "Up" || c === 38) return "up";
+    if (k === "ArrowDown" || k === "Down" || c === 40) return "down";
+    if (k === "ArrowLeft" || k === "Left" || c === 37) return "left";
+    if (k === "ArrowRight" || k === "Right" || c === 39) return "right";
+    if (k === "Enter" || c === 13) return "enter";
+    if (k === "Escape" || c === 27) return "escape";
+    return "";
+  }
+
+  function focusPlay() {
+    if (playBtn) playBtn.focus();
+  }
 
   var running = false;
   var paused = false;
@@ -102,7 +119,8 @@
     if (!screens[screenId]) return;
     screens[screenId].classList.remove("hidden");
     currentScreen = screenId;
-    if (screenId !== "play") focusFirst(screens[screenId]);
+    if (screenId === "play") focusPlay();
+    else focusFirst(screens[screenId]);
   }
 
   function moveFocus(direction) {
@@ -229,6 +247,7 @@
     paused = false;
     lastTs = 0;
     pauseOverlay.classList.add("hidden");
+    focusPlay();
   }
 
   function stopLoop() {
@@ -372,16 +391,19 @@
   }
 
   function handlePlayKey(event) {
-    if (event.key === DPAD.BACK || event.key === DPAD.SELECT) {
+    var key = playKey(event);
+    if (key === "escape") {
       pauseRun();
       return;
     }
+    if (key === "enter") {
+      focusPlay();
+      return;
+    }
     if (event.repeat) return;
-    var dir = -1;
-    DIRS.forEach(function (item, i) {
-      if (item.key === event.key) dir = i;
-    });
-    if (dir >= 0) tryHit(dir);
+    var dir = { up: 0, right: 1, down: 2, left: 3 }[key];
+    if (dir != null) tryHit(dir);
+    focusPlay();
   }
 
   function handleAction(action) {
@@ -391,6 +413,7 @@
       stopLoop();
       navigateTo("home");
     } else if (action === "resume") resumeRun();
+    else if (action === "hold") focusPlay();
   }
 
   document.addEventListener("keydown", function (event) {
