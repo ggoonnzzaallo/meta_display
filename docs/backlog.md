@@ -5,9 +5,10 @@ Wearables MCP (`search_webapps_docs`) is declared in [`.cursor/mcp.json`](../.cu
 ## TODO
 
 - [x] **Cadence** — inward reticle rhythm (`apps/cadence/`)
-- [x] **Gyre** — hold left/right to dodge closing hex walls (`apps/gyre/`)
+- [x] **Gyre** — tap left/right to dodge closing hex walls (`apps/gyre/`)
 - [x] **Stack** — pinch to drop a sliding bar (`apps/stack/`)
 - [x] **Well** — tiny Tetris, pinch to hard-drop (`apps/well/`)
+- [x] **Merge** — 6×6 2048, swipe to slide (`apps/merge/`)
 - [x] Register the four games in root `app.js` `APPS`
 - [ ] On-device HTTPS test via GitHub Pages (`…/apps/<name>/`)
 - [ ] **Names** — pinch to identify people you enrolled (camera + personal gallery)

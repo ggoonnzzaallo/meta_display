@@ -274,9 +274,10 @@
     return false;
   }
 
-  function rotate() {
+  function rotate(step) {
     if (!piece) return;
-    var next = piece.rot + 1;
+    var count = SHAPES[piece.type].length;
+    var next = ((piece.rot + step) % count + count) % count;
     var kicks = [0, -1, 1, -2, 2];
     var i;
     for (i = 0; i < kicks.length; i += 1) {
@@ -425,6 +426,7 @@
     ctx.fillStyle = CREAM;
     ctx.fillText("SCORE " + pad(score, 5), 352, 300);
     ctx.fillText("LINES " + pad(lines, 3), 352, 336);
+    ctx.fillText("UP / DOWN ROTATE", 352, 372);
     ctx.fillStyle = ORANGE;
     ctx.fillText("PINCH DROP", 352, 400);
 
@@ -456,10 +458,9 @@
     if (event.repeat) return;
     if (key === "left") move(-1, 0);
     else if (key === "right") move(1, 0);
-    else if (key === "up") rotate();
-    else if (key === "down") {
-      if (!move(0, 1)) lockPiece();
-    } else if (key === "enter") hardDrop();
+    else if (key === "up") rotate(1);
+    else if (key === "down") rotate(-1);
+    else if (key === "enter") hardDrop();
     focusPlay();
   }
 

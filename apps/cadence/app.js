@@ -25,10 +25,10 @@
   var SURFACE = "#1C1E21";
 
   var DIRS = [
-    { key: "ArrowUp", x: 0, y: -1 },
-    { key: "ArrowRight", x: 1, y: 0 },
-    { key: "ArrowDown", x: 0, y: 1 },
-    { key: "ArrowLeft", x: -1, y: 0 },
+    { key: "ArrowUp", x: 0, y: -1, label: "UP" },
+    { key: "ArrowRight", x: 1, y: 0, label: "RIGHT" },
+    { key: "ArrowDown", x: 0, y: 1, label: "DOWN" },
+    { key: "ArrowLeft", x: -1, y: 0, label: "LEFT" },
   ];
 
   var screens = {};
@@ -320,31 +320,62 @@
     ctx.fill();
   }
 
+  function incomingHint() {
+    var nearest = null;
+    var nearestP = -1;
+    notes.forEach(function (note) {
+      if (note.hit || note.missed) return;
+      var p = (time - note.spawn) / note.travel;
+      if (p > nearestP && p < 1.08) {
+        nearestP = p;
+        nearest = note;
+      }
+    });
+    if (!nearest) return { line: "WAIT", sub: "An arrow will fly in" };
+    return {
+      line: "SWIPE " + DIRS[nearest.dir].label,
+      sub: "When it reaches the ring",
+    };
+  }
+
   function draw() {
     ctx.clearRect(0, 0, SIZE, SIZE);
 
     ctx.strokeStyle = SURFACE;
-    ctx.lineWidth = 10;
+    ctx.lineWidth = 14;
+    ctx.beginPath();
+    ctx.arc(CX, CY, RING, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.strokeStyle = CYAN;
+    ctx.lineWidth = 4;
     ctx.beginPath();
     ctx.arc(CX, CY, RING, 0, Math.PI * 2);
     ctx.stroke();
 
-    ctx.strokeStyle = CYAN;
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.arc(CX, CY, RING, 0, Math.PI * 2);
-    ctx.stroke();
+    ctx.font = "700 16px ui-monospace, monospace";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = MUTED;
+    ctx.fillText("UP", CX, CY - RING - 22);
+    ctx.fillText("DOWN", CX, CY + RING + 22);
+    ctx.fillText("LEFT", CX - RING - 36, CY);
+    ctx.fillText("RIGHT", CX + RING + 40, CY);
 
     DIRS.forEach(function (dir, i) {
-      drawChevron(CX + dir.x * (RING - 2), CY + dir.y * (RING - 2), i, 11, MUTED);
+      drawChevron(CX + dir.x * (RING - 4), CY + dir.y * (RING - 4), i, 14, MUTED);
     });
 
     notes.forEach(function (note) {
       var pos = notePos(note);
       var color = note.hit ? CYAN : note.missed ? RED : CREAM;
-      var size = note.hit ? 10 : 18;
+      var size = note.hit ? 12 : 26;
       ctx.globalAlpha = note.hit ? 0.35 : note.missed ? 0.4 : 1;
       drawChevron(pos.x, pos.y, note.dir, size, color);
+      if (!note.hit && !note.missed && pos.p > 0.15 && pos.p < 1.05) {
+        ctx.fillStyle = color;
+        ctx.font = "700 18px ui-monospace, monospace";
+        ctx.fillText(DIRS[note.dir].label, pos.x - DIRS[note.dir].x * 36, pos.y - DIRS[note.dir].y * 36);
+      }
       ctx.globalAlpha = 1;
     });
 
@@ -358,6 +389,7 @@
     ctx.fillStyle = CREAM;
     ctx.font = "700 18px ui-monospace, monospace";
     ctx.textAlign = "left";
+    ctx.textBaseline = "alphabetic";
     ctx.fillText("SCORE " + pad(score, 5), 28, 45);
     ctx.textAlign = "right";
     ctx.fillText("x" + combo, 572, 45);
@@ -368,8 +400,18 @@
       ctx.fillRect(220 + i * 32, 28, 24, 18);
     }
 
+    var hint = incomingHint();
+    ctx.fillStyle = SURFACE;
+    ctx.fillRect(40, 500, 520, 72);
+    ctx.textAlign = "center";
+    ctx.fillStyle = CREAM;
+    ctx.font = "700 26px ui-monospace, monospace";
+    ctx.fillText(hint.line, CX, 532);
+    ctx.fillStyle = MUTED;
+    ctx.font = "700 14px ui-monospace, monospace";
+    ctx.fillText(hint.sub, CX, 556);
+
     if (judgeT > 0) {
-      ctx.textAlign = "center";
       ctx.fillStyle = judge === "PERFECT" ? CYAN : judge === "GOOD" ? AMBER : RED;
       ctx.font = "700 28px ui-monospace, monospace";
       ctx.fillText(judge, CX, CY + 8);

@@ -44,7 +44,6 @@
   var walls = [];
   var nextSpawn = 0;
   var flash = 0;
-  var dragX = null;
   var STEP = TAU / 6;
 
   function playKey(event) {
@@ -181,7 +180,6 @@
     nextSpawn = 0.55;
     flash = 0;
     lastTs = 0;
-    dragX = null;
     pauseOverlay.classList.add("hidden");
     navigateTo("play");
     loop();
@@ -190,7 +188,6 @@
   function pauseRun() {
     if (!running || paused) return;
     paused = true;
-    dragX = null;
     pauseOverlay.classList.remove("hidden");
     focusFirst(pauseOverlay);
   }
@@ -199,7 +196,6 @@
     if (!running || !paused) return;
     paused = false;
     lastTs = 0;
-    dragX = null;
     pauseOverlay.classList.add("hidden");
     focusPlay();
   }
@@ -207,7 +203,6 @@
   function stopLoop() {
     running = false;
     paused = false;
-    dragX = null;
     if (rafId) cancelAnimationFrame(rafId);
     rafId = 0;
     pauseOverlay.classList.add("hidden");
@@ -410,27 +405,6 @@
         return;
     }
     event.preventDefault();
-  });
-
-  document.addEventListener("pointerdown", function (event) {
-    if (currentScreen !== "play" || !running || paused) return;
-    dragX = event.clientX;
-  });
-
-  document.addEventListener("pointermove", function (event) {
-    if (dragX == null || currentScreen !== "play" || !running || paused) return;
-    var dx = event.clientX - dragX;
-    if (Math.abs(dx) < 6) return;
-    playerAngle = wrapAngle(playerAngle + dx * 0.025);
-    dragX = event.clientX;
-  });
-
-  document.addEventListener("pointerup", function () {
-    dragX = null;
-  });
-
-  document.addEventListener("pointercancel", function () {
-    dragX = null;
   });
 
   document.addEventListener("click", function (event) {

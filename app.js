@@ -14,6 +14,7 @@
     { name: "Gyre", href: "apps/gyre/" },
     { name: "Stack", href: "apps/stack/" },
     { name: "Well", href: "apps/well/" },
+    { name: "Merge", href: "apps/merge/" },
     { name: "Situation", href: "apps/situation/" },
     { name: "Markets", href: "apps/markets/" },
     { name: "Lock On", href: "apps/lockon/" },

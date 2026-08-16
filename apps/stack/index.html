@@ -5,10 +5,10 @@
   <meta name="viewport" content="width=600, height=600, initial-scale=1.0, user-scalable=no">
   <meta name="description" content="Pinch to drop a sliding bar. Stack it true or the tower slips.">
   <meta name="mrbd-web-app-capable" content="yes">
-  <title>STACK v2</title>
+  <title>STACK v3</title>
   <link rel="icon" href="favicon.png" sizes="128x128" type="image/png">
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="styles.css?v=2">
+  <link rel="stylesheet" href="styles.css?v=3">
 </head>
 <body>
   <div id="app">
@@ -16,7 +16,7 @@
       <div class="title-block">
         <p class="title-tag">PINCH TIMING</p>
         <h1>STACK</h1>
-        <p class="best-readout">BUILD v2</p>
+        <p class="best-readout">BUILD v3</p>
         <p id="best-readout" class="best-readout">BEST 00000</p>
       </div>
       <div class="menu">
@@ -31,9 +31,9 @@
       </header>
       <div class="content">
         <ul class="facts">
-          <li>A bar slides. Pinch to drop it and cut the overhang.</li>
-          <li>Down also drops. The next bar is only as wide as the overlap.</li>
-          <li>Miss the stack and the tower slips. Back / Escape pauses.</li>
+          <li>Pinch to drop. Perfect alignment grows the bar. Misses cost a life.</li>
+          <li>Three lives. The bar starts slow and speeds up as you climb.</li>
+          <li>Down also drops. Back / Escape pauses.</li>
         </ul>
         <button class="focusable" data-action="home">BACK</button>
       </div>
@@ -62,6 +62,6 @@
       </div>
     </section>
   </div>
-  <script src="app.js?v=2"></script>
+  <script src="app.js?v=3"></script>
 </body>
 </html>
