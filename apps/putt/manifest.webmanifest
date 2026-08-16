@@ -1,0 +1,11 @@
+{
+  "name": "PUTT",
+  "short_name": "Putt",
+  "description": "Card golf puzzle: pick a roll or jump, swipe a direction, land on the hole.",
+  "icons": [
+    { "src": "favicon.png", "sizes": "128x128", "type": "image/png" }
+  ],
+  "background_color": "#000000",
+  "theme_color": "#000000",
+  "display": "standalone"
+}

@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=600, height=600, initial-scale=1.0, user-scalable=no">
+  <meta name="description" content="Card golf puzzle: pick a roll or jump, swipe a direction, land on the hole.">
+  <meta name="mrbd-web-app-capable" content="yes">
+  <title>PUTT v1</title>
+  <link rel="icon" href="favicon.png" sizes="128x128" type="image/png">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="stylesheet" href="styles.css?v=1">
+</head>
+<body>
+  <div id="app">
+    <section id="home" class="screen" aria-label="PUTT title">
+      <div class="title-block">
+        <p class="title-tag">CARD GOLF</p>
+        <h1>PUTT</h1>
+        <p class="best-readout">BUILD v1</p>
+        <p id="best-readout" class="best-readout">HOLE 1 / 12</p>
+      </div>
+      <div class="menu">
+        <button class="focusable" data-action="play">PLAY</button>
+        <button class="focusable" data-action="how">HOW</button>
+      </div>
+    </section>
+
+    <section id="how" class="screen hidden" aria-label="How to play">
+      <header class="header">
+        <h1>HOW</h1>
+      </header>
+      <div class="content">
+        <ul class="facts">
+          <li>Pinch a card, then swipe the direction to hit.</li>
+          <li>ROLL stays on the grass. JUMP flies over gaps, sand, and walls.</li>
+          <li>Stop exactly on the hole. Sand kills a roll. Undo a bad stroke. Back pauses.</li>
+        </ul>
+        <button class="focusable" data-action="home">BACK</button>
+      </div>
+    </section>
+
+    <section id="play" class="screen screen-play hidden" aria-label="Course">
+      <canvas id="hud" width="600" height="600"></canvas>
+      <div id="tray" class="tray"></div>
+      <button id="play-btn" class="focusable play-hotspot" data-action="cancel-aim" aria-label="Aim"></button>
+      <div id="pause-overlay" class="overlay hidden">
+        <div class="panel">
+          <h2>PAUSED</h2>
+          <button class="focusable" data-action="resume">RESUME</button>
+          <button class="focusable" data-action="reset">RESET</button>
+          <button class="focusable" data-action="quit">QUIT</button>
+        </div>
+      </div>
+      <div id="hole-overlay" class="overlay hidden">
+        <div class="panel">
+          <h2 id="hole-title">HOLED</h2>
+          <button class="focusable" data-action="next">NEXT</button>
+          <button class="focusable" data-action="reset">RETRY</button>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script src="app.js?v=1"></script>
+</body>
+</html>
