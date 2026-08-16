@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=600, height=600, initial-scale=1.0, user-scalable=no">
+  <meta name="description" content="Tiny Tetris: D-pad move and rotate, pinch to hard-drop.">
+  <meta name="mrbd-web-app-capable" content="yes">
+  <title>WELL</title>
+  <link rel="icon" href="favicon.png" sizes="128x128" type="image/png">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="app">
+    <section id="home" class="screen" aria-label="WELL title">
+      <div class="title-block">
+        <p class="title-tag">PLACE · CLEAR</p>
+        <h1>WELL</h1>
+        <p id="best-readout" class="best-readout">BEST 00000</p>
+      </div>
+      <div class="menu">
+        <button class="focusable" data-action="play">PLAY</button>
+        <button class="focusable" data-action="how">HOW</button>
+      </div>
+    </section>
+
+    <section id="how" class="screen hidden" aria-label="How to play">
+      <header class="header">
+        <h1>HOW</h1>
+      </header>
+      <div class="content">
+        <ul class="facts">
+          <li>Left and right move. Up rotates. Down soft-drops.</li>
+          <li>Pinch or Enter hard-drops. Clear lines to score.</li>
+          <li>Top out ends the run. Escape pauses.</li>
+        </ul>
+        <button class="focusable" data-action="home">BACK</button>
+      </div>
+    </section>
+
+    <section id="play" class="screen screen-play hidden" aria-label="HUD">
+      <canvas id="hud" width="600" height="600"></canvas>
+      <div id="pause-overlay" class="overlay hidden">
+        <div class="panel">
+          <h2>PAUSED</h2>
+          <button class="focusable" data-action="resume">RESUME</button>
+          <button class="focusable" data-action="quit">QUIT</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="over" class="screen hidden" aria-label="Top out">
+      <header class="header">
+        <h1>TOP OUT</h1>
+      </header>
+      <div class="content">
+        <p id="over-stats" class="over-stats">SCORE 00000<br>BEST 00000</p>
+        <button class="focusable" data-action="again">AGAIN</button>
+        <button class="focusable" data-action="home">HOME</button>
+      </div>
+    </section>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>

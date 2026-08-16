@@ -13,7 +13,11 @@ Always treat these as the source of truth for Meta Ray-Ban Display Web Apps. Re-
 ## AI toolkit
 
 - [facebookincubator/meta-wearables-webapp](https://github.com/facebookincubator/meta-wearables-webapp)
-- Wearables MCP: `https://mcp.developer.meta.com/wearables` — tool `search_webapps_docs` (no auth)
+- Wearables MCP: `https://mcp.developer.meta.com/wearables` — tool `search_webapps_docs` (no auth). Declared in [`.cursor/mcp.json`](../.cursor/mcp.json). If that server is missing from the agent tool list, use the docs above and say so.
+
+## Backlog
+
+- [App backlog / PRDs](backlog.md) — Names (face-to-name) and Cadence (Neural Band rhythm)
 
 ## On-device I/O findings
 

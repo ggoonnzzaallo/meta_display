@@ -10,6 +10,10 @@
   };
 
   var APPS = [
+    { name: "Cadence", href: "apps/cadence/" },
+    { name: "Gyre", href: "apps/gyre/" },
+    { name: "Stack", href: "apps/stack/" },
+    { name: "Well", href: "apps/well/" },
     { name: "Situation", href: "apps/situation/" },
     { name: "Markets", href: "apps/markets/" },
     { name: "Lock On", href: "apps/lockon/" },
@@ -51,6 +55,7 @@
           : 0;
 
     focusables[next].focus();
+    focusables[next].scrollIntoView({ block: "nearest" });
   }
 
   function openFocused() {

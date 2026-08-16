@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=600, height=600, initial-scale=1.0, user-scalable=no">
+  <meta name="description" content="Pinch to drop a sliding bar. Stack it true or the tower slips.">
+  <meta name="mrbd-web-app-capable" content="yes">
+  <title>STACK</title>
+  <link rel="icon" href="favicon.png" sizes="128x128" type="image/png">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="app">
+    <section id="home" class="screen" aria-label="STACK title">
+      <div class="title-block">
+        <p class="title-tag">PINCH TIMING</p>
+        <h1>STACK</h1>
+        <p id="best-readout" class="best-readout">BEST 00000</p>
+      </div>
+      <div class="menu">
+        <button class="focusable" data-action="play">PLAY</button>
+        <button class="focusable" data-action="how">HOW</button>
+      </div>
+    </section>
+
+    <section id="how" class="screen hidden" aria-label="How to play">
+      <header class="header">
+        <h1>HOW</h1>
+      </header>
+      <div class="content">
+        <ul class="facts">
+          <li>A bar slides left and right. Pinch or Enter to drop it.</li>
+          <li>Overhang is cut off. The next bar is only as wide as the overlap.</li>
+          <li>Miss the stack and the tower slips. Escape pauses.</li>
+        </ul>
+        <button class="focusable" data-action="home">BACK</button>
+      </div>
+    </section>
+
+    <section id="play" class="screen screen-play hidden" aria-label="HUD">
+      <canvas id="hud" width="600" height="600"></canvas>
+      <div id="pause-overlay" class="overlay hidden">
+        <div class="panel">
+          <h2>PAUSED</h2>
+          <button class="focusable" data-action="resume">RESUME</button>
+          <button class="focusable" data-action="quit">QUIT</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="over" class="screen hidden" aria-label="Slip">
+      <header class="header">
+        <h1>SLIP</h1>
+      </header>
+      <div class="content">
+        <p id="over-stats" class="over-stats">SCORE 00000<br>BEST 00000</p>
+        <button class="focusable" data-action="again">AGAIN</button>
+        <button class="focusable" data-action="home">HOME</button>
+      </div>
+    </section>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,11 @@
+{
+  "name": "CADENCE",
+  "short_name": "Cadence",
+  "description": "Inward rhythm: tap the matching arrow when a chevron hits the center ring.",
+  "icons": [
+    { "src": "favicon.png", "sizes": "128x128", "type": "image/png" }
+  ],
+  "background_color": "#000000",
+  "theme_color": "#000000",
+  "display": "standalone"
+}
