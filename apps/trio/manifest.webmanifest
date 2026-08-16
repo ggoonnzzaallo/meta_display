@@ -1,0 +1,11 @@
+{
+  "name": "TRIO",
+  "short_name": "Trio",
+  "description": "4x4 number slider: 1 and 2 make 3, then doubles. One space per swipe.",
+  "icons": [
+    { "src": "favicon.png", "sizes": "128x128", "type": "image/png" }
+  ],
+  "background_color": "#000000",
+  "theme_color": "#000000",
+  "display": "standalone"
+}

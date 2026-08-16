@@ -10,6 +10,7 @@ Wearables MCP (`search_webapps_docs`) is declared in [`.cursor/mcp.json`](../.cu
 - [x] **Well** — tiny Tetris, pinch to hard-drop (`apps/well/`)
 - [x] **Merge** — 6×6 2048, swipe to slide (`apps/merge/`)
 - [x] **Putt** — card-golf puzzle, pick a stroke then swipe (`apps/putt/`)
+- [x] **Trio** — 4×4 Threes-style slider, one space per swipe (`apps/trio/`)
 - [x] Register the four games in root `app.js` `APPS`
 - [ ] On-device HTTPS test via GitHub Pages (`…/apps/<name>/`)
 - [ ] **Names** — pinch to identify people you enrolled (camera + personal gallery)
