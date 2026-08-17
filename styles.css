@@ -110,10 +110,43 @@ body {
     box-shadow 300ms ease;
 }
 
+.app-name-row {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
 .app-name {
   font-size: 24px;
   font-weight: 700;
   line-height: 1.1;
+}
+
+.app-new {
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  color: #ff2a00;
+  text-shadow:
+    0 0 8px #ff6a00,
+    0 0 16px rgba(255, 51, 0, 0.85);
+  animation: new-fire 1.15s ease-in-out infinite;
+}
+
+@keyframes new-fire {
+  0%,
+  100% {
+    color: #ff2200;
+    text-shadow:
+      0 0 6px #ff6a00,
+      0 0 14px rgba(255, 40, 0, 0.8);
+  }
+  50% {
+    color: #ffb000;
+    text-shadow:
+      0 0 10px #ff4d00,
+      0 0 22px rgba(255, 80, 0, 0.95);
+  }
 }
 
 .app-blurb {

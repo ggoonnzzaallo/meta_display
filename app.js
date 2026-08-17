@@ -60,19 +60,52 @@
     );
   }
 
+  function pacificDay(iso) {
+    return new Intl.DateTimeFormat("en-CA", {
+      timeZone: "America/Los_Angeles",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(new Date(iso));
+  }
+
+  function latestUpdateDay() {
+    var latest = "";
+    APPS.forEach(function (app) {
+      if (!app.updated) return;
+      var day = pacificDay(app.updated);
+      if (day > latest) latest = day;
+    });
+    return latest;
+  }
+
+  function isNew(app, latestDay) {
+    return !!(app.updated && latestDay && pacificDay(app.updated) === latestDay);
+  }
+
   function renderApps() {
     var list = document.getElementById("app-list");
+    var latestDay = latestUpdateDay();
     APPS.forEach(function (app) {
       var button = document.createElement("button");
       button.className = "focusable";
       button.setAttribute("data-href", app.href);
+      var nameRow = document.createElement("span");
+      nameRow.className = "app-name-row";
       var name = document.createElement("span");
       name.className = "app-name";
       name.textContent = app.name;
+      nameRow.appendChild(name);
+      if (isNew(app, latestDay)) {
+        var badge = document.createElement("span");
+        badge.className = "app-new";
+        badge.textContent = "*NEW*";
+        nameRow.appendChild(badge);
+      }
       var blurb = document.createElement("span");
       blurb.className = "app-blurb";
       blurb.textContent = (app.version ? app.version + " · " : "") + (app.blurb || "");
-      button.appendChild(name);
+      button.appendChild(nameRow);
       button.appendChild(blurb);
       if (app.updated) {
         var when = document.createElement("span");

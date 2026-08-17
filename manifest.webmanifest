@@ -1,7 +1,7 @@
 {
-  "name": "Display Apps",
-  "short_name": "Display Apps",
-  "description": "Launcher for Meta Ray-Ban Display web apps.",
+  "name": "G-Apps",
+  "short_name": "G-Apps",
+  "description": "G-Apps launcher for Meta Ray-Ban Display web apps.",
   "id": "/meta_display/",
   "start_url": "/meta_display/",
   "scope": "/meta_display/",
