@@ -15,7 +15,6 @@
   var CY = 318;
   var RING = 78;
   var SPAWN = 262;
-  var HIT_R = RING + 24;
   var HP_MAX = 5;
   var BEST_KEY = "cadence-best";
   var CYAN = "#00D4FF";
@@ -153,19 +152,18 @@
 
   function buildChart() {
     var out = [];
-    var t = 1.7;
+    var t = 1.35;
     var lastDir = -1;
-    while (t < 82) {
+    while (t < 78) {
       var dir = (Math.random() * 4) | 0;
       if (dir === lastDir) dir = (dir + 1 + ((Math.random() * 3) | 0)) % 4;
-      var progress = (t - 1.7) / 80;
-      var ramp = Math.min(1, progress * 2.6);
+      var progress = (t - 1.35) / 76;
       out.push({
         t: t,
         dir: dir,
-        travel: 1.5 - ramp * 0.62,
+        travel: 1.32 - progress * 0.52,
       });
-      t += 0.76 - ramp * 0.38;
+      t += 0.64 - progress * 0.3;
       lastDir = dir;
     }
     return out;
@@ -175,7 +173,7 @@
     var p = (time - note.spawn) / note.travel;
     if (p < 0) p = 0;
     var dir = DIRS[note.dir];
-    var r = SPAWN + (HIT_R - SPAWN) * Math.min(p, 1.28);
+    var r = SPAWN + (RING - SPAWN) * Math.min(p, 1.28);
     return { x: CX + dir.x * r, y: CY + dir.y * r, p: p };
   }
 
@@ -183,7 +181,7 @@
     combo = 0;
     hp -= 1;
     judge = "MISS";
-    judgePts = "+0";
+    judgePts = "";
     judgeT = 0.35;
     flash = 0.18;
     if (hp <= 0) endRun();
@@ -194,17 +192,17 @@
     combo += 1;
     var gained = 0;
     if (err <= 0.09) {
-      gained = 200 + combo * 8;
+      gained = 100 + combo * 4;
       judge = "PERFECT";
       perfects += 1;
     } else {
-      gained = 70 + combo * 3;
+      gained = 50 + combo * 2;
       judge = "GOOD";
       goods += 1;
     }
     score += gained;
     judgePts = "+" + gained;
-    judgeT = 0.45;
+    judgeT = 0.32;
   }
 
   function tryHit(dir) {
@@ -224,8 +222,8 @@
       return;
     }
     combo = 0;
-    judge = "MISS";
-    judgePts = "+0";
+    judge = "EARLY";
+    judgePts = "";
     judgeT = 0.22;
   }
 
@@ -431,14 +429,29 @@
       ctx.fillRect(320 + i * 28, 28, 20, 16);
     }
 
+    var hint = nearest
+      ? { line: "SWIPE " + DIRS[nearest.dir].label, sub: "When it reaches the ring" }
+      : { line: "WAIT", sub: "An arrow will fly in" };
+    ctx.fillStyle = SURFACE;
+    ctx.fillRect(40, 500, 520, 72);
+    ctx.textAlign = "center";
+    ctx.fillStyle = CREAM;
+    ctx.font = "700 26px ui-monospace, monospace";
+    ctx.fillText(hint.line, CX, 532);
+    ctx.fillStyle = MUTED;
+    ctx.font = "700 14px ui-monospace, monospace";
+    ctx.fillText(hint.sub, CX, 556);
+
     if (judgeT > 0) {
       ctx.textAlign = "center";
       ctx.fillStyle = judge === "PERFECT" ? CYAN : judge === "GOOD" ? AMBER : RED;
-      ctx.font = "700 34px ui-monospace, monospace";
-      ctx.fillText(judge, CX, CY - 6);
-      ctx.font = "700 20px ui-monospace, monospace";
-      ctx.fillStyle = judge === "PERFECT" ? CYAN : CREAM;
-      ctx.fillText(judgePts, CX, CY + 26);
+      ctx.font = "700 28px ui-monospace, monospace";
+      ctx.fillText(judge, CX, CY + 8);
+      if (judgePts) {
+        ctx.font = "700 18px ui-monospace, monospace";
+        ctx.fillStyle = judge === "PERFECT" ? CYAN : CREAM;
+        ctx.fillText(judgePts, CX, CY + 32);
+      }
     }
 
     ctx.textAlign = "left";

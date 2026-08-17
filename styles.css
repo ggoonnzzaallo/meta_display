@@ -53,13 +53,13 @@ body {
 }
 
 .header h1 {
-  font-size: 22px;
+  font-size: 24px;
   font-weight: 700;
   flex: 1;
 }
 
 .header-meta {
-  font-size: 14px;
+  font-size: 16px;
   color: var(--text-muted);
 }
 
@@ -74,7 +74,7 @@ body {
 }
 
 .lede {
-  font-size: 16px;
+  font-size: 18px;
   line-height: 1.4;
   color: var(--text-secondary);
 }
@@ -89,19 +89,19 @@ body {
 }
 
 .focusable {
-  min-height: 88px;
-  padding: 12px 20px;
+  min-height: 108px;
+  padding: 14px 20px;
   border: 2px solid transparent;
   border-radius: 12px;
   background: var(--bg-surface);
   color: var(--text-primary);
-  font-size: 20px;
+  font-size: 22px;
   font-weight: 600;
   text-align: left;
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 4px;
+  gap: 6px;
   opacity: 0.8;
   transition:
     transform 475ms cubic-bezier(0.6, 0, 0.4, 1),
@@ -111,15 +111,22 @@ body {
 }
 
 .app-name {
-  font-size: 20px;
+  font-size: 24px;
   font-weight: 700;
   line-height: 1.1;
 }
 
 .app-blurb {
-  font-size: 14px;
+  font-size: 17px;
   font-weight: 500;
   line-height: 1.25;
+  color: var(--text-secondary);
+}
+
+.app-updated {
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.2;
   color: var(--text-muted);
 }
 
@@ -128,5 +135,5 @@ body {
   opacity: 1;
   border-color: var(--focus-ring);
   box-shadow: 0 0 20px var(--focus-glow);
-  transform: scale(calc(1 - 8 / 88));
+  transform: scale(calc(1 - 8 / 108));
 }
