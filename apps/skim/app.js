@@ -19,9 +19,9 @@
   var BOOST_SPD = 540;
   var BOOST_T = 0.4;
   var BOOST_CD = 1.1;
-  var IMPULSE = 390;
-  var VY_MAX = 460;
-  var DAMP = 2.8;
+  var IMPULSE = 92;
+  var VY_MAX = 240;
+  var DAMP = 3.6;
   var BEST_KEY = "skim-best";
   var ENDLESS_KEY = "skim-endless";
   var CYAN = "#00D4FF";

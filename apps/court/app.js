@@ -15,6 +15,25 @@
   var BEST_KEY = "court-best";
   var KEYS = ["faith", "folk", "arms", "coin"];
   var LABELS = { faith: "FAITH", folk: "FOLK", arms: "ARMS", coin: "COIN" };
+  var MARK = {
+    STEWARD: "THE KEEP",
+    BISHOP: "THE CATHEDRAL",
+    CAPTAIN: "THE WALL",
+    MERCHANT: "THE QUAY",
+    PHYSICIAN: "THE WARD",
+    SPY: "THE GALLERY",
+    HUNTSMAN: "THE WOOD",
+    ENVOY: "THE GATE",
+    JESTER: "THE HALL",
+    MASON: "THE YARD",
+    SCHOLAR: "THE TOWER",
+    GUARD: "THE YARD",
+    FARMER: "THE FIELDS",
+    WIDOW: "THE LANE",
+    HEIR: "THE SOLAR",
+    DIPLOMAT: "THE CHAMBER",
+  };
+  var SPECIAL_AT = { 6: "winter", 12: "war-rumor", 18: "jubilee", 24: "eclipse" };
 
   var DECK = [
     {
@@ -372,6 +391,131 @@
       L: { label: "QUIET", faith: -2, coin: 1 },
       R: { label: "BELL", faith: 3, coin: -2, folk: 1 },
     },
+    {
+      id: "winter",
+      who: "STEWARD",
+      say: "Winter arrived in August. Burn the reserve timber?",
+      special: true,
+      L: { label: "SAVE", folk: -3, coin: 1, faith: -1 },
+      R: { label: "BURN", folk: 2, coin: -2, arms: -1 },
+    },
+    {
+      id: "war-rumor",
+      who: "SPY",
+      say: "Three kingdoms want our mines. Call the banners, or buy them off?",
+      special: true,
+      L: { label: "GOLD", coin: -4, arms: -1, folk: 1 },
+      R: { label: "BANNERS", arms: 3, folk: -2, coin: -1, next: "war-camp" },
+    },
+    {
+      id: "war-camp",
+      who: "CAPTAIN",
+      say: "The camp is hungry. Feed them beef, or sermons?",
+      follow: true,
+      L: { label: "BEEF", coin: -3, arms: 2, folk: -1 },
+      R: { label: "PRAY", faith: 3, arms: -2 },
+    },
+    {
+      id: "jubilee",
+      who: "HEIR",
+      say: "Ten years. Throw a jubilee, or pretend you are still young?",
+      special: true,
+      L: { label: "QUIET", folk: -2, coin: 2 },
+      R: { label: "FEAST", folk: 3, coin: -3, faith: 1, next: "jubilee-riot" },
+    },
+    {
+      id: "jubilee-riot",
+      who: "GUARD",
+      say: "The jubilee spilled into a riot. Hang a thief, or hang a tapestry over it?",
+      follow: true,
+      L: { label: "HANG", arms: 2, folk: -3, faith: -1 },
+      R: { label: "HIDE", folk: 1, coin: -1, arms: -2 },
+    },
+    {
+      id: "eclipse",
+      who: "SCHOLAR",
+      say: "An eclipse at noon. The bishop wants panic. I want notes.",
+      special: true,
+      L: { label: "PANIC", faith: 3, folk: -2 },
+      R: { label: "NOTES", faith: -2, folk: 1, coin: -1, arms: 1 },
+    },
+    {
+      id: "forge",
+      who: "MASON",
+      say: "A new forge by the river. Swords, ploughs, or church doors?",
+      L: { label: "SWORDS", arms: 3, folk: -1, coin: -2 },
+      R: { label: "PLOUGHS", folk: 3, arms: -1, coin: -2 },
+    },
+    {
+      id: "census",
+      who: "STEWARD",
+      say: "Count every soul. The folk hate being numbered.",
+      L: { label: "SKIP", coin: -1, folk: 1 },
+      R: { label: "COUNT", coin: 2, folk: -2, arms: 1 },
+    },
+    {
+      id: "horse",
+      who: "CAPTAIN",
+      say: "Buy eastern horses. Fast, expensive, slightly cursed.",
+      L: { label: "WALK", arms: -2, coin: 1 },
+      R: { label: "BUY", arms: 3, coin: -3, faith: -1 },
+    },
+    {
+      id: "play",
+      who: "JESTER",
+      say: "A play about your father. He dies in act one. Repeatedly.",
+      L: { label: "BAN", folk: -2, faith: 1, arms: 1 },
+      R: { label: "STAGE", folk: 3, faith: -2, coin: -1 },
+    },
+    {
+      id: "quarantine",
+      who: "PHYSICIAN",
+      say: "Rats in the granary. Burn the grain, or pray it is not plague.",
+      L: { label: "PRAY", faith: 2, folk: -3, coin: -1 },
+      R: { label: "BURN", folk: -1, coin: -3, faith: -1, arms: 1 },
+    },
+    {
+      id: "treaty",
+      who: "DIPLOMAT",
+      say: "A treaty written in two languages. Ours is the honest one. Probably.",
+      L: { label: "SIGN", arms: -2, coin: 2, folk: 1 },
+      R: { label: "WAIT", arms: 1, coin: -1, faith: -1 },
+    },
+    {
+      id: "garden",
+      who: "HUNTSMAN",
+      say: "Turn the killing field into a garden. The captains will sulk.",
+      L: { label: "FIELD", arms: 2, folk: -1, faith: -1 },
+      R: { label: "ROSES", folk: 2, faith: 1, arms: -2, coin: -1 },
+    },
+    {
+      id: "mirror",
+      who: "HEIR",
+      say: "I found a mirror that makes you look taller. Hang it in the throne room?",
+      L: { label: "NO", folk: 1, coin: 1 },
+      R: { label: "HANG", folk: -1, coin: -1, arms: 1, faith: -1 },
+    },
+    {
+      id: "salt",
+      who: "MERCHANT",
+      say: "A salt monopoly. We get rich. The soup gets worse.",
+      L: { label: "FREE", folk: 2, coin: -2 },
+      R: { label: "LOCK", coin: 3, folk: -3 },
+    },
+    {
+      id: "relic-road",
+      who: "ENVOY",
+      say: "A relic road would bring pilgrims and pickpockets.",
+      L: { label: "CLOSE", faith: -2, coin: 1, folk: -1 },
+      R: { label: "OPEN", faith: 2, folk: 2, coin: -1, arms: -2 },
+    },
+    {
+      id: "crows",
+      who: "WIDOW",
+      say: "Crows will not leave the gallows. Take them down, or add more?",
+      L: { label: "DOWN", folk: 2, arms: -2, faith: 1 },
+      R: { label: "MORE", arms: 2, folk: -3, faith: -1 },
+    },
   ];
 
   var byId = {};
@@ -388,10 +532,14 @@
   var overCause = document.getElementById("over-cause");
   var metersEl = document.getElementById("meters");
   var whoEl = document.getElementById("who");
+  var whoMarkEl = document.getElementById("who-mark");
   var sayEl = document.getElementById("say");
   var leftEl = document.getElementById("left-label");
   var rightEl = document.getElementById("right-label");
   var yearEl = document.getElementById("year-readout");
+  var portrait = document.getElementById("portrait");
+  var pctx = portrait ? portrait.getContext("2d") : null;
+  var playUi = document.querySelector(".play-ui");
 
   var running = false;
   var paused = false;
@@ -531,13 +679,89 @@
     }).join("");
   }
 
+  function drawPortrait(who) {
+    if (!pctx) return;
+    var palette = {
+      STEWARD: ["#1C3D2A", "#4DFFB0"],
+      BISHOP: ["#3A3018", "#E8C547"],
+      CAPTAIN: ["#3A1818", "#FF5A5A"],
+      MERCHANT: ["#18352E", "#4DFFB0"],
+      PHYSICIAN: ["#1C2A3A", "#00D4FF"],
+      SPY: ["#2A2030", "#B388FF"],
+      HUNTSMAN: ["#243018", "#12A35A"],
+      ENVOY: ["#2A2418", "#FFB000"],
+      JESTER: ["#3A1830", "#FF5A7A"],
+      MASON: ["#2A2A2A", "#B0B3B8"],
+      SCHOLAR: ["#1C2438", "#00D4FF"],
+      GUARD: ["#321818", "#FF6B35"],
+      FARMER: ["#2A3018", "#C4A35A"],
+      WIDOW: ["#241C28", "#FFF4E0"],
+      HEIR: ["#2A2410", "#E8C547"],
+      DIPLOMAT: ["#182030", "#4DA3FF"],
+    };
+    var pair = palette[who] || ["#1C1E21", "#E8C547"];
+    pctx.clearRect(0, 0, 96, 96);
+    pctx.fillStyle = pair[0];
+    pctx.fillRect(0, 0, 96, 96);
+    pctx.fillStyle = pair[1];
+    pctx.fillRect(8, 70, 80, 18);
+    pctx.beginPath();
+    pctx.arc(48, 42, 22, 0, Math.PI * 2);
+    pctx.fill();
+    pctx.fillStyle = "#121417";
+    pctx.fillRect(36, 38, 8, 8);
+    pctx.fillRect(52, 38, 8, 8);
+    if (who === "BISHOP") {
+      pctx.fillStyle = pair[1];
+      pctx.beginPath();
+      pctx.moveTo(48, 6);
+      pctx.lineTo(70, 32);
+      pctx.lineTo(26, 32);
+      pctx.closePath();
+      pctx.fill();
+    } else if (who === "CAPTAIN" || who === "GUARD") {
+      pctx.fillStyle = "#2A2D31";
+      pctx.fillRect(24, 18, 48, 14);
+      pctx.fillRect(20, 28, 56, 8);
+    } else if (who === "JESTER") {
+      pctx.fillStyle = pair[1];
+      pctx.beginPath();
+      pctx.moveTo(22, 34);
+      pctx.lineTo(48, 8);
+      pctx.lineTo(74, 34);
+      pctx.lineTo(48, 22);
+      pctx.closePath();
+      pctx.fill();
+    } else if (who === "SPY") {
+      pctx.fillStyle = "#121417";
+      pctx.fillRect(18, 34, 60, 10);
+    }
+  }
+
+  function setTone() {
+    if (!playUi) return;
+    var topKey = KEYS[0];
+    var topVal = -1;
+    KEYS.forEach(function (key) {
+      var lean = Math.abs(stats[key] - START);
+      if (lean > topVal) {
+        topVal = lean;
+        topKey = key;
+      }
+    });
+    playUi.className = "play-ui tone-" + topKey;
+  }
+
   function renderCard() {
     if (!card) return;
     whoEl.textContent = card.who;
+    if (whoMarkEl) whoMarkEl.textContent = MARK[card.who] || "THE COURT";
     sayEl.textContent = card.say;
     leftEl.innerHTML = '<span class="dir">L</span> ' + card.L.label;
     rightEl.innerHTML = '<span class="dir">R</span> ' + card.R.label;
     yearEl.textContent = "YEAR " + pad(years, 2);
+    drawPortrait(card.who);
+    setTone();
     renderMeters();
   }
 
@@ -547,17 +771,22 @@
       queued = "";
       return follow;
     }
+    var specialId = SPECIAL_AT[years];
+    if (specialId && byId[specialId] && recent.indexOf(specialId) === -1) {
+      recent.push(specialId);
+      return byId[specialId];
+    }
     var pool = DECK.filter(function (item) {
-      return !item.follow && recent.indexOf(item.id) === -1;
+      return !item.follow && !item.special && recent.indexOf(item.id) === -1;
     });
     if (!pool.length) {
       pool = DECK.filter(function (item) {
-        return !item.follow;
+        return !item.follow && !item.special;
       });
     }
     var pick = pool[(Math.random() * pool.length) | 0];
     recent.push(pick.id);
-    if (recent.length > 8) recent.shift();
+    if (recent.length > 22) recent.shift();
     return pick;
   }
 

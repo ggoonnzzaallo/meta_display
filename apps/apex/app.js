@@ -12,25 +12,15 @@
 
   var SIZE = 600;
   var CX = 300;
-  var CY = 318;
-  var RING = 78;
-  var SPAWN = 262;
   var HP_MAX = 5;
-  var BEST_KEY = "cadence-best";
-  var CYAN = "#00D4FF";
-  var GREEN = "#00FF88";
+  var BEST_KEY = "apex-best";
+  var RED = "#FF3B3B";
   var AMBER = "#FFB000";
-  var RED = "#FF3333";
+  var CYAN = "#00D4FF";
   var CREAM = "#FFFFFF";
   var MUTED = "#B0B3B8";
   var SURFACE = "#1C1E21";
-
-  var DIRS = [
-    { key: "ArrowUp", x: 0, y: -1, label: "UP" },
-    { key: "ArrowRight", x: 1, y: 0, label: "RIGHT" },
-    { key: "ArrowDown", x: 0, y: 1, label: "DOWN" },
-    { key: "ArrowLeft", x: -1, y: 0, label: "LEFT" },
-  ];
+  var GREEN = "#00FF88";
 
   var screens = {};
   var currentScreen = "home";
@@ -40,6 +30,32 @@
   var playBtn = document.getElementById("play-btn");
   var bestReadout = document.getElementById("best-readout");
   var overStats = document.getElementById("over-stats");
+
+  var running = false;
+  var paused = false;
+  var rafId = 0;
+  var lastTs = 0;
+  var time = 0;
+  var phase = "lights";
+  var score = 0;
+  var combo = 0;
+  var hp = HP_MAX;
+  var best = 0;
+  var lights = 0;
+  var lightT = 0;
+  var goAt = 0;
+  var jumped = false;
+  var notes = [];
+  var chart = [];
+  var chartI = 0;
+  var judge = "";
+  var judgePts = "";
+  var judgeT = 0;
+  var flash = 0;
+  var perfects = 0;
+  var lates = 0;
+  var earlies = 0;
+  var reactionMs = 0;
 
   function playKey(event) {
     var k = event.key;
@@ -56,26 +72,6 @@
   function focusPlay() {
     if (playBtn) playBtn.focus();
   }
-
-  var running = false;
-  var paused = false;
-  var rafId = 0;
-  var lastTs = 0;
-  var time = 0;
-  var score = 0;
-  var combo = 0;
-  var hp = HP_MAX;
-  var best = 0;
-  var notes = [];
-  var chart = [];
-  var chartI = 0;
-  var judge = "";
-  var judgePts = "";
-  var judgeT = 0;
-  var flash = 0;
-  var perfects = 0;
-  var lates = 0;
-  var earlies = 0;
 
   function pad(n, width) {
     var s = String(Math.max(0, Math.floor(n)));
@@ -153,37 +149,31 @@
 
   function buildChart() {
     var out = [];
-    var t = 2.4;
-    var lastDir = -1;
-    while (t < 92) {
-      var dir = (Math.random() * 4) | 0;
-      if (dir === lastDir) dir = (dir + 1 + ((Math.random() * 3) | 0)) % 4;
-      var progress = (t - 2.4) / 90;
+    var t = 0.9;
+    var last = "";
+    while (t < 78) {
+      var progress = t / 78;
       var ease = progress * progress;
+      var roll = Math.random();
+      var kind = roll < 0.34 ? "B" : roll < 0.67 ? "L" : "R";
+      if (kind === last) kind = kind === "B" ? (Math.random() < 0.5 ? "L" : "R") : "B";
       out.push({
         t: t,
-        dir: dir,
-        travel: 2.15 - ease * 1.05,
+        kind: kind,
+        travel: 2.2 - ease * 1.05,
       });
-      t += 1.18 - ease * 0.68;
-      lastDir = dir;
+      t += 1.22 - ease * 0.7;
+      last = kind;
     }
     return out;
-  }
-
-  function notePos(note) {
-    var p = (time - note.spawn) / note.travel;
-    if (p < 0) p = 0;
-    var dir = DIRS[note.dir];
-    var r = SPAWN + (RING - SPAWN) * Math.min(p, 1.28);
-    return { x: CX + dir.x * r, y: CY + dir.y * r, p: p };
   }
 
   function missNote() {
     combo = 0;
     hp -= 1;
     judge = "MISS";
-    judgeT = 0.35;
+    judgePts = "+0";
+    judgeT = 0.4;
     flash = 0.18;
     if (hp <= 0) endRun();
   }
@@ -207,15 +197,16 @@
     }
     score += gained;
     judgePts = "+" + gained;
-    judgeT = 0.55;
+    judgeT = 0.5;
   }
 
-  function tryHit(dir) {
+  function tryHit(kind) {
+    if (phase !== "lap") return;
     var bestNote = null;
     var bestErr = 99;
     var bestP = 0;
     notes.forEach(function (note) {
-      if (note.hit || note.missed || note.dir !== dir) return;
+      if (note.hit || note.missed || note.kind !== kind) return;
       var p = (time - note.spawn) / note.travel;
       var err = Math.abs(p - 1);
       if (err < bestErr) {
@@ -229,9 +220,43 @@
       return;
     }
     combo = 0;
-    judge = bestP > 0 && bestP < 1 ? "EARLY" : "WHIFF";
+    judge = "WHIFF";
     judgePts = "+0";
     judgeT = 0.28;
+  }
+
+  function beginLap() {
+    phase = "lap";
+    time = 0;
+    notes = [];
+    chart = buildChart();
+    chartI = 0;
+    lastTs = 0;
+  }
+
+  function lightsPinch() {
+    if (phase !== "lights" || jumped) return;
+    if (goAt <= 0) {
+      jumped = true;
+      hp -= 1;
+      judge = "JUMP START";
+      judgePts = "-1 LIFE";
+      judgeT = 0.8;
+      flash = 0.22;
+      if (hp <= 0) {
+        endRun();
+        return;
+      }
+      beginLap();
+      return;
+    }
+    reactionMs = Math.max(0, (time - goAt) * 1000);
+    var gained = Math.max(80, Math.round(700 - reactionMs * 1.6));
+    score += gained;
+    judge = "LIGHTS OUT";
+    judgePts = reactionMs.toFixed(0) + " ms  +" + gained;
+    judgeT = 0.9;
+    beginLap();
   }
 
   function startRun() {
@@ -241,8 +266,13 @@
     combo = 0;
     hp = HP_MAX;
     time = 0;
+    phase = "lights";
+    lights = 0;
+    lightT = 0.55;
+    goAt = 0;
+    jumped = false;
     notes = [];
-    chart = buildChart();
+    chart = [];
     chartI = 0;
     judge = "";
     judgePts = "";
@@ -251,6 +281,7 @@
     perfects = 0;
     lates = 0;
     earlies = 0;
+    reactionMs = 0;
     lastTs = 0;
     pauseOverlay.classList.add("hidden");
     navigateTo("play");
@@ -294,25 +325,44 @@
         pad(score, 5) +
         "<br>PERFECT " +
         pad(perfects, 3) +
-        "  LATE " +
-        pad(lates, 3) +
-        "<br>EARLY " +
-        pad(earlies, 3) +
+        "<br>REACT " +
+        (reactionMs ? reactionMs.toFixed(0) + " ms" : jumped ? "JUMP" : "--") +
         "<br>BEST " +
         pad(best, 5);
     }
     navigateTo("over");
   }
 
-  function update(dt) {
-    time += dt;
-    if (judgeT > 0) judgeT -= dt;
-    if (flash > 0) flash -= dt;
+  function updateLights(dt) {
+    lightT -= dt;
+    if (lights < 5) {
+      if (lightT <= 0) {
+        lights += 1;
+        lightT = lights >= 5 ? 0.3 + Math.random() * 2.4 : 0.62;
+      }
+      return;
+    }
+    if (goAt <= 0) {
+      if (lightT <= 0) {
+        goAt = time;
+        lights = 0;
+      }
+      return;
+    }
+    if (time - goAt > 1.15) {
+      judge = "ASLEEP";
+      judgePts = "+0";
+      judgeT = 0.6;
+      missNote();
+      if (running) beginLap();
+    }
+  }
 
+  function updateLap(dt) {
     while (chartI < chart.length && chart[chartI].t <= time) {
       var item = chart[chartI];
       notes.push({
-        dir: item.dir,
+        kind: item.kind,
         spawn: time,
         travel: item.travel,
         hit: false,
@@ -320,7 +370,6 @@
       });
       chartI += 1;
     }
-
     notes.forEach(function (note) {
       if (note.hit || note.missed) return;
       var p = (time - note.spawn) / note.travel;
@@ -329,101 +378,107 @@
         missNote();
       }
     });
-
     notes = notes.filter(function (note) {
       return time - note.spawn < note.travel * 1.45;
     });
-
     if (chartI >= chart.length && !notes.length && hp > 0) endRun();
   }
 
-  function drawChevron(x, y, dir, size, color) {
-    var vx = DIRS[dir].x;
-    var vy = DIRS[dir].y;
-    var px = -vy;
-    var py = vx;
+  function update(dt) {
+    time += dt;
+    if (judgeT > 0) judgeT -= dt;
+    if (flash > 0) flash -= dt;
+    if (phase === "lights") updateLights(dt);
+    else updateLap(dt);
+  }
+
+  function drawRoad() {
+    ctx.fillStyle = "#121417";
     ctx.beginPath();
-    ctx.moveTo(x - vx * size, y - vy * size);
-    ctx.lineTo(x + px * size * 0.72, y + py * size * 0.72);
-    ctx.lineTo(x + vx * size * 0.2, y + vy * size * 0.2);
-    ctx.lineTo(x - px * size * 0.72, y - py * size * 0.72);
+    ctx.moveTo(CX, 92);
+    ctx.lineTo(520, 560);
+    ctx.lineTo(80, 560);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = CREAM;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(CX, 92);
+    ctx.lineTo(80, 560);
+    ctx.moveTo(CX, 92);
+    ctx.lineTo(520, 560);
+    ctx.stroke();
+    ctx.strokeStyle = AMBER;
+    ctx.setLineDash([18, 16]);
+    ctx.beginPath();
+    ctx.moveTo(CX, 110);
+    ctx.lineTo(CX, 548);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.strokeStyle = CYAN;
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.moveTo(118, 430);
+    ctx.lineTo(482, 430);
+    ctx.stroke();
+  }
+
+  function noteScale(p) {
+    return 0.12 + Math.min(1.15, Math.max(0, p)) * 0.88;
+  }
+
+  function drawChevron(x, y, dir, size, color) {
+    var vx = dir;
+    ctx.beginPath();
+    ctx.moveTo(x + vx * size, y);
+    ctx.lineTo(x - vx * size * 0.35, y - size * 0.7);
+    ctx.lineTo(x - vx * size * 0.05, y);
+    ctx.lineTo(x - vx * size * 0.35, y + size * 0.7);
     ctx.closePath();
     ctx.fillStyle = color;
     ctx.fill();
   }
 
-  function incomingHint() {
-    var nearest = null;
-    var nearestP = -1;
-    notes.forEach(function (note) {
-      if (note.hit || note.missed) return;
-      var p = (time - note.spawn) / note.travel;
-      if (p > nearestP && p < 1.08) {
-        nearestP = p;
-        nearest = note;
-      }
-    });
-    return nearest;
-  }
-
-  function drawLane(dir, hot) {
-    var x0 = CX + dir.x * (RING + 18);
-    var y0 = CY + dir.y * (RING + 18);
-    var x1 = CX + dir.x * (SPAWN - 8);
-    var y1 = CY + dir.y * (SPAWN - 8);
-    ctx.strokeStyle = hot ? "rgba(0, 212, 255, 0.45)" : "rgba(28, 30, 33, 0.9)";
-    ctx.lineWidth = hot ? 18 : 12;
-    ctx.beginPath();
-    ctx.moveTo(x0, y0);
-    ctx.lineTo(x1, y1);
-    ctx.stroke();
-  }
-
-  function draw() {
-    ctx.clearRect(0, 0, SIZE, SIZE);
-
-    var nearest = incomingHint();
-    DIRS.forEach(function (dir, i) {
-      drawLane(dir, nearest && nearest.dir === i);
-    });
-
-    ctx.strokeStyle = SURFACE;
-    ctx.lineWidth = 18;
-    ctx.beginPath();
-    ctx.arc(CX, CY, RING, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.strokeStyle = judgeT > 0 && judge === "PERFECT" ? GREEN : CYAN;
-    ctx.lineWidth = 5;
-    ctx.beginPath();
-    ctx.arc(CX, CY, RING, 0, Math.PI * 2);
-    ctx.stroke();
-
-    DIRS.forEach(function (dir, i) {
-      var hot = nearest && nearest.dir === i;
-      drawChevron(CX + dir.x * (RING - 2), CY + dir.y * (RING - 2), i, 16, hot ? CYAN : MUTED);
-    });
-
-    notes.forEach(function (note) {
-      var pos = notePos(note);
-      var inWindow = pos.p > 0.86 && pos.p < 1.12;
-      var color = note.hit ? CYAN : note.missed ? RED : inWindow ? CYAN : CREAM;
-      var size = note.hit ? 12 : inWindow ? 30 : 24;
-      ctx.globalAlpha = note.hit ? 0.35 : note.missed ? 0.4 : 1;
-      drawChevron(pos.x, pos.y, note.dir, size, color);
-      ctx.globalAlpha = 1;
-    });
-
-    if (flash > 0) {
-      ctx.fillStyle = "rgba(255, 51, 51, " + flash * 0.35 + ")";
-      ctx.fillRect(0, 0, SIZE, SIZE);
+  function drawNote(note) {
+    var p = (time - note.spawn) / note.travel;
+    var y = 120 + Math.min(1.2, Math.max(0, p)) * 310;
+    var s = noteScale(p);
+    var inWindow = p > 0.86 && p < 1.12;
+    var color = note.hit ? CYAN : note.missed ? RED : inWindow ? (note.kind === "B" ? RED : CYAN) : CREAM;
+    ctx.globalAlpha = note.hit ? 0.3 : note.missed ? 0.35 : 1;
+    if (note.kind === "B") {
+      var w = 40 + s * 220;
+      ctx.fillStyle = color;
+      ctx.fillRect(CX - w / 2, y - 7 * s, w, 14 * s);
+    } else {
+      var x = note.kind === "L" ? CX - 70 * s : CX + 70 * s;
+      drawChevron(x, y, note.kind === "L" ? -1 : 1, 18 + s * 16, color);
     }
+    ctx.globalAlpha = 1;
+  }
 
+  function drawLights() {
+    var i;
+    var on = phase === "lights" && lights > 0 && goAt <= 0;
+    for (i = 0; i < 5; i += 1) {
+      ctx.beginPath();
+      ctx.arc(140 + i * 80, 78, 18, 0, Math.PI * 2);
+      ctx.fillStyle = on && i < lights ? RED : "#2A2D31";
+      ctx.fill();
+      if (on && i < lights) {
+        ctx.strokeStyle = RED;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      }
+    }
+  }
+
+  function drawHud() {
     ctx.fillStyle = SURFACE;
     ctx.fillRect(16, 16, 568, 44);
     ctx.fillStyle = CREAM;
     ctx.font = "700 18px ui-monospace, monospace";
     ctx.textAlign = "left";
-    ctx.textBaseline = "alphabetic";
     ctx.fillText("SCORE " + pad(score, 5), 28, 45);
     ctx.fillStyle = CYAN;
     ctx.font = "700 14px ui-monospace, monospace";
@@ -432,24 +487,43 @@
     ctx.fillStyle = CREAM;
     ctx.font = "700 18px ui-monospace, monospace";
     ctx.fillText("x" + combo, 572, 45);
-
     var i;
     for (i = 0; i < HP_MAX; i += 1) {
-      ctx.fillStyle = i < hp ? CYAN : "#2A2D31";
+      ctx.fillStyle = i < hp ? RED : "#2A2D31";
       ctx.fillRect(320 + i * 28, 28, 20, 16);
     }
+  }
 
+  function draw() {
+    ctx.clearRect(0, 0, SIZE, SIZE);
+    drawRoad();
+    drawLights();
+    if (phase === "lap") notes.forEach(drawNote);
+    if (flash > 0) {
+      ctx.fillStyle = "rgba(255, 59, 59, " + flash * 0.4 + ")";
+      ctx.fillRect(0, 0, SIZE, SIZE);
+    }
+    drawHud();
+    if (phase === "lights" && goAt <= 0) {
+      ctx.textAlign = "center";
+      ctx.fillStyle = MUTED;
+      ctx.font = "700 16px ui-monospace, monospace";
+      ctx.fillText(lights < 5 ? "WAIT" : "PINCH ON LIGHTS OUT", CX, 390);
+    }
     if (judgeT > 0) {
       ctx.textAlign = "center";
       ctx.fillStyle =
-        judge === "PERFECT" ? CYAN : judge === "LATE" ? AMBER : judge === "EARLY" ? AMBER : RED;
-      ctx.font = "700 34px ui-monospace, monospace";
-      ctx.fillText(judge, CX, CY - 6);
-      ctx.font = "700 20px ui-monospace, monospace";
-      ctx.fillStyle = judge === "PERFECT" ? CYAN : CREAM;
-      ctx.fillText(judgePts, CX, CY + 26);
+        judge === "PERFECT" || judge === "LIGHTS OUT"
+          ? GREEN
+          : judge === "LATE" || judge === "EARLY"
+            ? AMBER
+            : RED;
+      ctx.font = "700 30px ui-monospace, monospace";
+      ctx.fillText(judge, CX, 250);
+      ctx.font = "700 18px ui-monospace, monospace";
+      ctx.fillStyle = CREAM;
+      ctx.fillText(judgePts, CX, 282);
     }
-
     ctx.textAlign = "left";
   }
 
@@ -471,13 +545,15 @@
       pauseRun();
       return;
     }
-    if (key === "enter") {
+    if (event.repeat) return;
+    if (phase === "lights") {
+      if (key === "enter") lightsPinch();
       focusPlay();
       return;
     }
-    if (event.repeat) return;
-    var dir = { up: 0, right: 1, down: 2, left: 3 }[key];
-    if (dir != null) tryHit(dir);
+    if (key === "left" || key === "up") tryHit("L");
+    else if (key === "right" || key === "down") tryHit("R");
+    else if (key === "enter") tryHit("B");
     focusPlay();
   }
 
@@ -488,7 +564,10 @@
       stopLoop();
       navigateTo("home");
     } else if (action === "resume") resumeRun();
-    else if (action === "hold") focusPlay();
+    else if (action === "hold") {
+      if (currentScreen === "play" && running && !paused && phase === "lights") lightsPinch();
+      else focusPlay();
+    }
   }
 
   document.addEventListener("keydown", function (event) {

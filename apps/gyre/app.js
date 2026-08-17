@@ -44,7 +44,6 @@
   var walls = [];
   var nextSpawn = 0;
   var flash = 0;
-  var STEP = TAU / 6;
 
   function playKey(event) {
     var k = event.key;
@@ -142,8 +141,13 @@
     return a;
   }
 
+  function faceAngle(slot) {
+    return -Math.PI / 2 + ((slot + 0.5) * TAU) / SIDES;
+  }
+
   function sector(angle) {
-    return Math.floor(wrapAngle(angle) / (TAU / SIDES)) % SIDES;
+    var a = wrapAngle(angle + Math.PI / 2);
+    return Math.floor(a / (TAU / SIDES) + 0.0001) % SIDES;
   }
 
   function wallSpeed() {
@@ -175,7 +179,7 @@
     paused = false;
     time = 0;
     score = 0;
-    playerAngle = 0;
+    playerAngle = faceAngle(1);
     walls = [];
     nextSpawn = 0.55;
     flash = 0;
@@ -223,7 +227,8 @@
   }
 
   function rotateBy(steps) {
-    playerAngle = wrapAngle(playerAngle + steps * STEP);
+    var slot = (sector(playerAngle) + steps + SIDES) % SIDES;
+    playerAngle = faceAngle(slot);
   }
 
   function update(dt) {
@@ -282,19 +287,28 @@
     }
   }
 
+  function isGap(wall, i) {
+    if (i === wall.gap) return true;
+    if (wall.wide && i === (wall.gap + 1) % SIDES) return true;
+    return false;
+  }
+
   function drawWall(wall) {
     var i;
-    ctx.strokeStyle = AMBER;
-    ctx.lineWidth = 14;
     ctx.lineCap = "butt";
     for (i = 0; i < SIDES; i += 1) {
-      if (i === wall.gap) continue;
-      if (wall.wide && i === (wall.gap + 1) % SIDES) continue;
       var a = hexPoint(wall.r, i);
       var b = hexPoint(wall.r, i + 1);
       ctx.beginPath();
       ctx.moveTo(a.x, a.y);
       ctx.lineTo(b.x, b.y);
+      if (isGap(wall, i)) {
+        ctx.strokeStyle = "rgba(0, 255, 136, 0.7)";
+        ctx.lineWidth = 10;
+      } else {
+        ctx.strokeStyle = AMBER;
+        ctx.lineWidth = 14;
+      }
       ctx.stroke();
     }
   }

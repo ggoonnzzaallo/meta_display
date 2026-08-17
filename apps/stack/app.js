@@ -215,11 +215,11 @@
     var perfect = overlap >= top.w - 12;
     var nextW = overlap;
     if (perfect) {
-      nextW = Math.min(MAX_W, overlap + 28);
-      judge = "PERFECT";
+      nextW = Math.min(MAX_W, top.w);
+      judge = "FULL";
       score += 2;
     } else {
-      judge = "OK";
+      judge = "TRIM";
       score += 1;
     }
     judgeT = 0.4;
@@ -257,8 +257,29 @@
       ctx.fillRect(layer.x, y, layer.w, LAYER_H - 3);
     });
 
-    ctx.fillStyle = CYAN;
-    ctx.fillRect(bar.x, 400 - LAYER_H, bar.w, LAYER_H - 3);
+    var top = layers[layers.length - 1];
+    var dropY = 400 - LAYER_H;
+    var barMid = bar.x + bar.w / 2;
+    var topMid = top.x + top.w / 2;
+    var centered = Math.abs(barMid - topMid) <= 6 && Math.abs(bar.w - top.w) <= 12;
+
+    ctx.strokeStyle = centered ? GREEN : "rgba(0, 212, 255, 0.55)";
+    ctx.lineWidth = centered ? 3 : 2;
+    ctx.setLineDash([6, 6]);
+    ctx.beginPath();
+    ctx.moveTo(top.x, 400);
+    ctx.lineTo(top.x, dropY);
+    ctx.moveTo(top.x + top.w, 400);
+    ctx.lineTo(top.x + top.w, dropY);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    ctx.fillStyle = centered ? GREEN : CYAN;
+    ctx.fillRect(bar.x, dropY, bar.w, LAYER_H - 3);
+
+    ctx.fillStyle = GREEN;
+    ctx.fillRect(topMid - 2, 400 - 8, 4, 12);
+    ctx.fillRect(barMid - 2, dropY + LAYER_H - 10, 4, 12);
 
     ctx.fillStyle = SURFACE;
     ctx.fillRect(16, 16, 568, 44);
@@ -272,13 +293,13 @@
       ctx.fillRect(250 + i * 28, 28, 22, 16);
     }
     ctx.textAlign = "right";
-    ctx.fillStyle = CYAN;
-    ctx.fillText("PINCH DROP", 572, 45);
+    ctx.fillStyle = centered ? GREEN : CYAN;
+    ctx.fillText(centered ? "CENTER · FULL" : "PINCH DROP", 572, 45);
     if (judgeT > 0) {
       ctx.textAlign = "center";
-      ctx.fillStyle = judge === "PERFECT" ? GREEN : judge === "MISS" ? "#FF3333" : CREAM;
+      ctx.fillStyle = judge === "FULL" ? GREEN : judge === "MISS" ? "#FF3333" : CREAM;
       ctx.font = "700 26px ui-monospace, monospace";
-      ctx.fillText(judge, 300, 90);
+      ctx.fillText(judge === "FULL" ? "FULL WIDTH" : judge, 300, 90);
     }
     ctx.textAlign = "left";
   }

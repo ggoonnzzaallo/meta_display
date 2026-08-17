@@ -18,6 +18,8 @@
   var OY = 86;
   var UNDOS = 5;
   var BEST_KEY = "merge-best";
+  var IDLE_SPAWN = 4.2;
+  var HINT_T = 3.2;
   var CREAM = "#FFFFFF";
   var MUTED = "#B0B3B8";
   var SURFACE = "#1C1E21";
@@ -51,11 +53,15 @@
 
   var running = false;
   var paused = false;
+  var rafId = 0;
+  var lastTs = 0;
   var board = [];
   var score = 0;
   var best = 0;
   var undos = UNDOS;
   var history = [];
+  var hintT = 0;
+  var spawnT = 0;
 
   function playKey(event) {
     var k = event.key;
@@ -180,7 +186,12 @@
     var open = empties();
     if (!open.length) return;
     var pick = open[(Math.random() * open.length) | 0];
-    board[pick.r][pick.c] = Math.random() < 0.9 ? 2 : 4;
+    board[pick.r][pick.c] = Math.random() < 0.82 ? 2 : 4;
+  }
+
+  function spawnN(n) {
+    var i;
+    for (i = 0; i < n; i += 1) spawn();
   }
 
   function slideLine(values, reverse) {
@@ -261,7 +272,8 @@
     pushHistory();
     board = result.board;
     score += result.gained;
-    spawn();
+    spawnN(2);
+    spawnT = IDLE_SPAWN;
     draw();
     if (!canMove()) endRun();
   }
@@ -282,11 +294,14 @@
     score = 0;
     undos = UNDOS;
     history = [];
+    hintT = HINT_T;
+    spawnT = IDLE_SPAWN;
+    lastTs = 0;
     spawn();
     spawn();
     pauseOverlay.classList.add("hidden");
     navigateTo("play");
-    draw();
+    loop();
   }
 
   function pauseRun() {
@@ -299,6 +314,7 @@
   function resumeRun() {
     if (!running || !paused) return;
     paused = false;
+    lastTs = 0;
     pauseOverlay.classList.add("hidden");
     focusPlay();
   }
@@ -306,6 +322,8 @@
   function stopLoop() {
     running = false;
     paused = false;
+    if (rafId) cancelAnimationFrame(rafId);
+    rafId = 0;
     pauseOverlay.classList.add("hidden");
   }
 
@@ -369,12 +387,45 @@
     ctx.fillStyle = AMBER;
     ctx.fillText("UNDO " + undos, 572, 45);
 
-    ctx.fillStyle = SURFACE;
-    ctx.fillRect(16, 548, 568, 36);
-    ctx.fillStyle = MUTED;
-    ctx.font = "700 14px ui-monospace, monospace";
-    ctx.textAlign = "center";
-    ctx.fillText("SWIPE TO SLIDE  ·  PINCH UNDO", 300, 572);
+    if (hintT > 0) {
+      ctx.globalAlpha = Math.min(1, hintT / 0.6);
+      ctx.fillStyle = SURFACE;
+      ctx.fillRect(16, 548, 568, 36);
+      ctx.fillStyle = MUTED;
+      ctx.font = "700 14px ui-monospace, monospace";
+      ctx.textAlign = "center";
+      ctx.fillText("SWIPE TO SLIDE  ·  PINCH UNDO", 300, 572);
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  function update(dt) {
+    if (hintT > 0) hintT -= dt;
+    spawnT -= dt;
+    if (spawnT <= 0) {
+      spawn();
+      spawnT = IDLE_SPAWN;
+      if (!canMove()) {
+        draw();
+        endRun();
+        return;
+      }
+    }
+  }
+
+  function loop(ts) {
+    if (!running) return;
+    rafId = requestAnimationFrame(loop);
+    if (paused) {
+      draw();
+      return;
+    }
+    if (!lastTs) lastTs = ts || performance.now();
+    var now = ts || performance.now();
+    var dt = Math.min(0.05, (now - lastTs) / 1000);
+    lastTs = now;
+    update(dt);
+    draw();
   }
 
   function handlePlayKey(event) {

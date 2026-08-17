@@ -8,7 +8,7 @@
   <title>COURT v1</title>
   <link rel="icon" href="favicon.png" sizes="128x128" type="image/png">
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="styles.css?v=1">
+  <link rel="stylesheet" href="styles.css?v=2">
 </head>
 <body>
   <div id="app">
@@ -31,9 +31,9 @@
       </header>
       <div class="content">
         <ul class="facts">
-          <li>Swipe left or right to answer. Both choices are on the card.</li>
+          <li>Swipe left or right to answer. Portraits mark who is speaking.</li>
           <li>A mark on a meter means that choice will move it. You will not see which way.</li>
-          <li>Faith, folk, arms, coin. Empty or full ends the reign. Back pauses.</li>
+          <li>Faith, folk, arms, coin. Empty or full ends the reign. Later years bring new crises. Back pauses.</li>
         </ul>
         <button class="focusable" data-action="home">BACK</button>
       </div>
@@ -43,7 +43,13 @@
       <div class="play-ui">
         <div id="meters" class="meters"></div>
         <div class="card">
-          <p id="who" class="who">STEWARD</p>
+          <div class="card-head">
+            <canvas id="portrait" width="96" height="96"></canvas>
+            <div class="who-wrap">
+              <p id="who" class="who">STEWARD</p>
+              <p id="who-mark" class="who-mark">THE KEEP</p>
+            </div>
+          </div>
           <p id="say" class="say">The harvest is late.</p>
           <div class="choices">
             <p id="left-label" class="choice"><span class="dir">L</span> KEEP</p>
@@ -77,6 +83,6 @@
       </div>
     </section>
   </div>
-  <script src="app.js?v=1"></script>
+  <script src="app.js?v=2"></script>
 </body>
 </html>

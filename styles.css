@@ -90,7 +90,7 @@ body {
 
 .focusable {
   min-height: 88px;
-  padding: 0 20px;
+  padding: 12px 20px;
   border: 2px solid transparent;
   border-radius: 12px;
   background: var(--bg-surface);
@@ -98,12 +98,29 @@ body {
   font-size: 20px;
   font-weight: 600;
   text-align: left;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
   opacity: 0.8;
   transition:
     transform 475ms cubic-bezier(0.6, 0, 0.4, 1),
     opacity 300ms cubic-bezier(0.4, 0.04, 0.5, 1),
     border-color 300ms ease,
     box-shadow 300ms ease;
+}
+
+.app-name {
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.app-blurb {
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.25;
+  color: var(--text-muted);
 }
 
 .focusable:focus {

@@ -85,12 +85,15 @@
   var board = [];
   var piece = null;
   var nextType = "T";
+  var holdType = "";
+  var holdUsed = false;
   var bag = [];
   var score = 0;
   var lines = 0;
   var best = 0;
   var fallT = 0;
   var dropAt = 0;
+  var holdAt = 0;
 
   function playKey(event) {
     var k = event.key;
@@ -241,6 +244,34 @@
     return true;
   }
 
+  function spawnType(type) {
+    var rot = 0;
+    var x = 3;
+    var y = 0;
+    if (type === "I") x = 2;
+    if (!fits(type, rot, x, y)) return false;
+    piece = { type: type, rot: rot, x: x, y: y };
+    fallT = 0;
+    return true;
+  }
+
+  function holdPiece() {
+    if (!piece || !running || paused || holdUsed) return;
+    var now = performance.now();
+    if (now - holdAt < 160) return;
+    holdAt = now;
+    holdUsed = true;
+    var current = piece.type;
+    if (!holdType) {
+      holdType = current;
+      if (!spawn()) endRun();
+      return;
+    }
+    var swap = holdType;
+    holdType = current;
+    if (!spawnType(swap)) endRun();
+  }
+
   function lockPiece() {
     cells(piece.type, piece.rot, piece.x, piece.y).forEach(function (cell) {
       if (cell.y >= 0) board[cell.y][cell.x] = piece.type;
@@ -262,6 +293,7 @@
       score += 8;
     }
     if (!spawn()) endRun();
+    holdUsed = false;
   }
 
   function move(dx, dy) {
@@ -289,13 +321,12 @@
     }
   }
 
-  function hardDrop() {
+  function softDrop() {
     if (!piece || !running || paused) return;
-    var now = performance.now();
-    if (now - dropAt < 120) return;
-    dropAt = now;
-    while (move(0, 1)) score += 2;
-    lockPiece();
+    if (move(0, 1)) {
+      score += 1;
+      fallT = 0;
+    }
   }
 
   function gravity() {
@@ -309,11 +340,14 @@
     bag = [];
     refillBag();
     nextType = takeType();
+    holdType = "";
+    holdUsed = false;
     score = 0;
     lines = 0;
     fallT = 0;
     lastTs = 0;
     dropAt = 0;
+    holdAt = 0;
     pauseOverlay.classList.add("hidden");
     navigateTo("play");
     if (!spawn()) {
@@ -411,24 +445,44 @@
     }
 
     ctx.fillStyle = SURFACE;
-    ctx.fillRect(336, 86, 212, 160);
+    ctx.fillRect(336, 86, 212, 148);
     ctx.fillStyle = CREAM;
     ctx.font = "700 16px ui-monospace, monospace";
     ctx.textAlign = "left";
-    ctx.fillText("NEXT", 352, 116);
+    ctx.fillText("NEXT", 352, 114);
     cells(nextType, 0, 0, 0).forEach(function (cell) {
       ctx.fillStyle = COLORS[nextType];
-      ctx.fillRect(368 + cell.x * 28, 136 + cell.y * 28, 26, 26);
+      ctx.fillRect(368 + cell.x * 26, 128 + cell.y * 26, 24, 24);
     });
 
     ctx.fillStyle = SURFACE;
-    ctx.fillRect(336, 262, 212, 180);
+    ctx.fillRect(336, 246, 212, 148);
     ctx.fillStyle = CREAM;
-    ctx.fillText("SCORE " + pad(score, 5), 352, 300);
-    ctx.fillText("LINES " + pad(lines, 3), 352, 336);
-    ctx.fillText("UP / DOWN ROTATE", 352, 372);
+    ctx.fillText("HOLD", 352, 274);
+    if (holdType) {
+      ctx.globalAlpha = holdUsed ? 0.4 : 1;
+      cells(holdType, 0, 0, 0).forEach(function (cell) {
+        ctx.fillStyle = COLORS[holdType];
+        ctx.fillRect(368 + cell.x * 26, 288 + cell.y * 26, 24, 24);
+      });
+      ctx.globalAlpha = 1;
+    } else {
+      ctx.fillStyle = "#B0B3B8";
+      ctx.font = "700 13px ui-monospace, monospace";
+      ctx.fillText("PINCH TO STOW", 352, 320);
+    }
+
+    ctx.fillStyle = SURFACE;
+    ctx.fillRect(336, 406, 212, 148);
+    ctx.fillStyle = CREAM;
+    ctx.font = "700 16px ui-monospace, monospace";
+    ctx.fillText("SCORE " + pad(score, 5), 352, 440);
+    ctx.fillText("LINES " + pad(lines, 3), 352, 472);
+    ctx.fillStyle = "#B0B3B8";
+    ctx.font = "700 13px ui-monospace, monospace";
+    ctx.fillText("DOWN SOFT DROP", 352, 504);
     ctx.fillStyle = ORANGE;
-    ctx.fillText("PINCH DROP", 352, 400);
+    ctx.fillText("PINCH HOLD", 352, 528);
 
     ctx.fillStyle = SURFACE;
     ctx.fillRect(16, 16, 568, 44);
@@ -455,12 +509,16 @@
       pauseRun();
       return;
     }
+    if (key === "down") {
+      softDrop();
+      focusPlay();
+      return;
+    }
     if (event.repeat) return;
     if (key === "left") move(-1, 0);
     else if (key === "right") move(1, 0);
     else if (key === "up") rotate(1);
-    else if (key === "down") rotate(-1);
-    else if (key === "enter") hardDrop();
+    else if (key === "enter") holdPiece();
     focusPlay();
   }
 
@@ -470,8 +528,8 @@
     else if (action === "home" || action === "quit") {
       stopLoop();
       navigateTo("home");
-    } else if (action === "resume") resumeRun();
-    else if (action === "drop") hardDrop();
+    }     else if (action === "resume") resumeRun();
+    else if (action === "hold") holdPiece();
   }
 
   document.addEventListener("keydown", function (event) {

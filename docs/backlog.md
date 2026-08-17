@@ -4,7 +4,7 @@ Wearables MCP (`search_webapps_docs`) is declared in [`.cursor/mcp.json`](../.cu
 
 ## TODO
 
-- [x] **Cadence** — inward reticle rhythm (`apps/cadence/`)
+- [x] **Apex** — F1 reaction trainer (`apps/apex/`): lights out, then brake/turn-in
 - [x] **Gyre** — tap left/right to dodge closing hex walls (`apps/gyre/`)
 - [x] **Stack** — pinch to drop a sliding bar (`apps/stack/`)
 - [x] **Well** — tiny Tetris, pinch to hard-drop (`apps/well/`)

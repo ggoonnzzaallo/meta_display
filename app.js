@@ -10,21 +10,22 @@
   };
 
   var APPS = [
-    { name: "Cadence", href: "apps/cadence/" },
-    { name: "Gyre", href: "apps/gyre/" },
-    { name: "Stack", href: "apps/stack/" },
-    { name: "Well", href: "apps/well/" },
-    { name: "Merge", href: "apps/merge/" },
-    { name: "Putt", href: "apps/putt/" },
-    { name: "Trio", href: "apps/trio/" },
-    { name: "Court", href: "apps/court/" },
-    { name: "Skim", href: "apps/skim/" },
-    { name: "Situation", href: "apps/situation/" },
-    { name: "Markets", href: "apps/markets/" },
-    { name: "Lock On", href: "apps/lockon/" },
-    { name: "Strike", href: "apps/strike/" },
-    { name: "Starter", href: "apps/starter/" },
-    { name: "IO Probe", href: "apps/ioprobe/" },
+    { name: "Cadence", href: "apps/cadence/", blurb: "Swipe matching arrows on the beat" },
+    { name: "Apex", href: "apps/apex/", blurb: "F1 lights out, then brake and turn" },
+    { name: "Gyre", href: "apps/gyre/", blurb: "Rotate through closing hex walls" },
+    { name: "Stack", href: "apps/stack/", blurb: "Pinch to drop and keep the width" },
+    { name: "Well", href: "apps/well/", blurb: "Tiny Tetris with hold and soft drop" },
+    { name: "Merge", href: "apps/merge/", blurb: "6×6 2048 that keeps filling" },
+    { name: "Putt", href: "apps/putt/", blurb: "Card golf. Land on the cup" },
+    { name: "Trio", href: "apps/trio/", blurb: "Threes-style slider. One step per swipe" },
+    { name: "Court", href: "apps/court/", blurb: "Left or right decrees. Keep four meters" },
+    { name: "Skim", href: "apps/skim/", blurb: "Canyon racer. Tap altitude, pinch boost" },
+    { name: "Situation", href: "apps/situation/", blurb: "Live headlines from Monitor the Situation" },
+    { name: "Markets", href: "apps/markets/", blurb: "Movers, earnings, and market headlines" },
+    { name: "Lock On", href: "apps/lockon/", blurb: "Head-aim HUD. Bring targets to the pipper" },
+    { name: "Strike", href: "apps/strike/", blurb: "Head-aim shooting gallery" },
+    { name: "Starter", href: "apps/starter/", blurb: "Smoke-test the glasses Web App shell" },
+    { name: "IO Probe", href: "apps/ioprobe/", blurb: "Camera, mic, and location permission check" },
   ];
 
   function renderApps() {
@@ -33,7 +34,14 @@
       var button = document.createElement("button");
       button.className = "focusable";
       button.setAttribute("data-href", app.href);
-      button.textContent = app.name;
+      var name = document.createElement("span");
+      name.className = "app-name";
+      name.textContent = app.name;
+      var blurb = document.createElement("span");
+      blurb.className = "app-blurb";
+      blurb.textContent = app.blurb || "";
+      button.appendChild(name);
+      button.appendChild(blurb);
       list.appendChild(button);
     });
   }
