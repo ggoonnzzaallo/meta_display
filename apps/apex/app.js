@@ -46,8 +46,8 @@
   var goAt = 0;
   var jumped = false;
   var notes = [];
-  var chart = [];
-  var chartI = 0;
+  var nextSpawn = 0.9;
+  var lastKind = "";
   var judge = "";
   var judgePts = "";
   var judgeT = 0;
@@ -147,25 +147,16 @@
     focusables[next].focus();
   }
 
-  function buildChart() {
-    var out = [];
-    var t = 0.9;
-    var last = "";
-    while (t < 78) {
-      var progress = t / 78;
-      var ease = progress * progress;
-      var roll = Math.random();
-      var kind = roll < 0.34 ? "B" : roll < 0.67 ? "L" : "R";
-      if (kind === last) kind = kind === "B" ? (Math.random() < 0.5 ? "L" : "R") : "B";
-      out.push({
-        t: t,
-        kind: kind,
-        travel: 2.2 - ease * 1.05,
-      });
-      t += 1.22 - ease * 0.7;
-      last = kind;
-    }
-    return out;
+  function spawnEase(t) {
+    var progress = Math.min(1, t / 90);
+    return progress * progress;
+  }
+
+  function nextNoteKind(last) {
+    var roll = Math.random();
+    var kind = roll < 0.34 ? "B" : roll < 0.67 ? "L" : "R";
+    if (kind === last) kind = kind === "B" ? (Math.random() < 0.5 ? "L" : "R") : "B";
+    return kind;
   }
 
   function missNote() {
@@ -229,8 +220,8 @@
     phase = "lap";
     time = 0;
     notes = [];
-    chart = buildChart();
-    chartI = 0;
+    nextSpawn = 0.9;
+    lastKind = "";
     lastTs = 0;
   }
 
@@ -272,8 +263,8 @@
     goAt = 0;
     jumped = false;
     notes = [];
-    chart = [];
-    chartI = 0;
+    nextSpawn = 0.9;
+    lastKind = "";
     judge = "";
     judgePts = "";
     judgeT = 0;
@@ -359,16 +350,18 @@
   }
 
   function updateLap(dt) {
-    while (chartI < chart.length && chart[chartI].t <= time) {
-      var item = chart[chartI];
+    while (nextSpawn <= time) {
+      var ease = spawnEase(nextSpawn);
+      var kind = nextNoteKind(lastKind);
       notes.push({
-        kind: item.kind,
+        kind: kind,
         spawn: time,
-        travel: item.travel,
+        travel: 2.2 - ease * 1.05,
         hit: false,
         missed: false,
       });
-      chartI += 1;
+      nextSpawn += 1.22 - ease * 0.7;
+      lastKind = kind;
     }
     notes.forEach(function (note) {
       if (note.hit || note.missed) return;
@@ -381,7 +374,6 @@
     notes = notes.filter(function (note) {
       return time - note.spawn < note.travel * 1.45;
     });
-    if (chartI >= chart.length && !notes.length && hp > 0) endRun();
   }
 
   function update(dt) {
