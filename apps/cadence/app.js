@@ -15,6 +15,7 @@
   var CY = 318;
   var RING = 78;
   var SPAWN = 262;
+  var HIT_R = RING + 24;
   var HP_MAX = 5;
   var BEST_KEY = "cadence-best";
   var CYAN = "#00D4FF";
@@ -74,8 +75,7 @@
   var judgeT = 0;
   var flash = 0;
   var perfects = 0;
-  var lates = 0;
-  var earlies = 0;
+  var goods = 0;
 
   function pad(n, width) {
     var s = String(Math.max(0, Math.floor(n)));
@@ -153,19 +153,19 @@
 
   function buildChart() {
     var out = [];
-    var t = 2.4;
+    var t = 1.7;
     var lastDir = -1;
-    while (t < 92) {
+    while (t < 82) {
       var dir = (Math.random() * 4) | 0;
       if (dir === lastDir) dir = (dir + 1 + ((Math.random() * 3) | 0)) % 4;
-      var progress = (t - 2.4) / 90;
-      var ease = progress * progress;
+      var progress = (t - 1.7) / 80;
+      var ramp = Math.min(1, progress * 2.6);
       out.push({
         t: t,
         dir: dir,
-        travel: 2.15 - ease * 1.05,
+        travel: 1.5 - ramp * 0.62,
       });
-      t += 1.18 - ease * 0.68;
+      t += 0.76 - ramp * 0.38;
       lastDir = dir;
     }
     return out;
@@ -175,7 +175,7 @@
     var p = (time - note.spawn) / note.travel;
     if (p < 0) p = 0;
     var dir = DIRS[note.dir];
-    var r = SPAWN + (RING - SPAWN) * Math.min(p, 1.28);
+    var r = SPAWN + (HIT_R - SPAWN) * Math.min(p, 1.28);
     return { x: CX + dir.x * r, y: CY + dir.y * r, p: p };
   }
 
@@ -183,37 +183,33 @@
     combo = 0;
     hp -= 1;
     judge = "MISS";
+    judgePts = "+0";
     judgeT = 0.35;
     flash = 0.18;
     if (hp <= 0) endRun();
   }
 
-  function hitNote(note, err, p) {
+  function hitNote(note, err) {
     note.hit = true;
     combo += 1;
     var gained = 0;
-    if (err <= 0.07) {
-      gained = 300 + combo * 12;
+    if (err <= 0.09) {
+      gained = 200 + combo * 8;
       judge = "PERFECT";
       perfects += 1;
-    } else if (p < 1) {
-      gained = 80 + combo * 3;
-      judge = "EARLY";
-      earlies += 1;
     } else {
-      gained = 110 + combo * 4;
-      judge = "LATE";
-      lates += 1;
+      gained = 70 + combo * 3;
+      judge = "GOOD";
+      goods += 1;
     }
     score += gained;
     judgePts = "+" + gained;
-    judgeT = 0.55;
+    judgeT = 0.45;
   }
 
   function tryHit(dir) {
     var bestNote = null;
     var bestErr = 99;
-    var bestP = 0;
     notes.forEach(function (note) {
       if (note.hit || note.missed || note.dir !== dir) return;
       var p = (time - note.spawn) / note.travel;
@@ -221,17 +217,16 @@
       if (err < bestErr) {
         bestErr = err;
         bestNote = note;
-        bestP = p;
       }
     });
-    if (bestNote && bestErr <= 0.22) {
-      hitNote(bestNote, bestErr, bestP);
+    if (bestNote && bestErr <= 0.2) {
+      hitNote(bestNote, bestErr);
       return;
     }
     combo = 0;
-    judge = bestP > 0 && bestP < 1 ? "EARLY" : "WHIFF";
+    judge = "MISS";
     judgePts = "+0";
-    judgeT = 0.28;
+    judgeT = 0.22;
   }
 
   function startRun() {
@@ -249,8 +244,7 @@
     judgeT = 0;
     flash = 0;
     perfects = 0;
-    lates = 0;
-    earlies = 0;
+    goods = 0;
     lastTs = 0;
     pauseOverlay.classList.add("hidden");
     navigateTo("play");
@@ -294,10 +288,8 @@
         pad(score, 5) +
         "<br>PERFECT " +
         pad(perfects, 3) +
-        "  LATE " +
-        pad(lates, 3) +
-        "<br>EARLY " +
-        pad(earlies, 3) +
+        "  GOOD " +
+        pad(goods, 3) +
         "<br>BEST " +
         pad(best, 5);
     }
@@ -405,7 +397,7 @@
 
     notes.forEach(function (note) {
       var pos = notePos(note);
-      var inWindow = pos.p > 0.86 && pos.p < 1.12;
+      var inWindow = pos.p > 0.9 && pos.p < 1.1;
       var color = note.hit ? CYAN : note.missed ? RED : inWindow ? CYAN : CREAM;
       var size = note.hit ? 12 : inWindow ? 30 : 24;
       ctx.globalAlpha = note.hit ? 0.35 : note.missed ? 0.4 : 1;
@@ -441,8 +433,7 @@
 
     if (judgeT > 0) {
       ctx.textAlign = "center";
-      ctx.fillStyle =
-        judge === "PERFECT" ? CYAN : judge === "LATE" ? AMBER : judge === "EARLY" ? AMBER : RED;
+      ctx.fillStyle = judge === "PERFECT" ? CYAN : judge === "GOOD" ? AMBER : RED;
       ctx.font = "700 34px ui-monospace, monospace";
       ctx.fillText(judge, CX, CY - 6);
       ctx.font = "700 20px ui-monospace, monospace";
