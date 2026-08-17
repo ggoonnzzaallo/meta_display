@@ -3,12 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=600, height=600, initial-scale=1.0, user-scalable=no">
-  <meta name="description" content="Tiny Tetris: move, rotate, soft-drop, and pinch to hold a piece.">
+  <meta name="description" content="Tiny Tetris: move, rotate, soft-drop, pinch to hard-drop, double-up to hold.">
   <meta name="mrbd-web-app-capable" content="yes">
   <title>WELL v3</title>
   <link rel="icon" href="favicon.png" sizes="128x128" type="image/png">
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="styles.css?v=4">
+  <link rel="stylesheet" href="styles.css?v=5">
 </head>
 <body>
   <div id="app">
@@ -31,9 +31,9 @@
       </header>
       <div class="content">
         <ul class="facts">
-          <li>Left and right shift. Up rotates. Down soft-drops, one row at a time.</li>
-          <li>Pinch holds the piece for later. You can hold once per drop.</li>
-          <li>Clear lines to score. Top out ends the run. Back pauses.</li>
+          <li>Left and right shift. Up rotates. Up twice quickly holds for later.</li>
+          <li>Down soft-drops one row. Pinch slams the piece down.</li>
+          <li>Hold once per drop. Clear lines to score. Back pauses.</li>
         </ul>
         <button class="focusable" data-action="home">BACK</button>
       </div>
@@ -41,7 +41,7 @@
 
     <section id="play" class="screen screen-play hidden" aria-label="HUD">
       <canvas id="hud" width="600" height="600"></canvas>
-      <button id="play-btn" class="focusable play-hotspot" data-action="hold" aria-label="Hold piece"></button>
+      <button id="play-btn" class="focusable play-hotspot" data-action="drop" aria-label="Hard drop"></button>
       <div id="pause-overlay" class="overlay hidden">
         <div class="panel">
           <h2>PAUSED</h2>
@@ -62,6 +62,6 @@
       </div>
     </section>
   </div>
-  <script src="app.js?v=4"></script>
+  <script src="app.js?v=5"></script>
 </body>
 </html>

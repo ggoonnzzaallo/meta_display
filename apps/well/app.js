@@ -94,6 +94,7 @@
   var fallT = 0;
   var dropAt = 0;
   var holdAt = 0;
+  var upTapAt = 0;
 
   function playKey(event) {
     var k = event.key;
@@ -321,6 +322,15 @@
     }
   }
 
+  function hardDrop() {
+    if (!piece || !running || paused) return;
+    var now = performance.now();
+    if (now - dropAt < 120) return;
+    dropAt = now;
+    while (move(0, 1)) score += 2;
+    lockPiece();
+  }
+
   function softDrop() {
     if (!piece || !running || paused) return;
     if (move(0, 1)) {
@@ -348,6 +358,7 @@
     lastTs = 0;
     dropAt = 0;
     holdAt = 0;
+    upTapAt = 0;
     pauseOverlay.classList.add("hidden");
     navigateTo("play");
     if (!spawn()) {
@@ -469,7 +480,7 @@
     } else {
       ctx.fillStyle = "#B0B3B8";
       ctx.font = "700 13px ui-monospace, monospace";
-      ctx.fillText("PINCH TO STOW", 352, 320);
+      ctx.fillText("UP UP TO STOW", 352, 320);
     }
 
     ctx.fillStyle = SURFACE;
@@ -480,9 +491,9 @@
     ctx.fillText("LINES " + pad(lines, 3), 352, 472);
     ctx.fillStyle = "#B0B3B8";
     ctx.font = "700 13px ui-monospace, monospace";
-    ctx.fillText("DOWN SOFT DROP", 352, 504);
+    ctx.fillText("DOWN SOFT  UP ROTATE", 352, 504);
     ctx.fillStyle = ORANGE;
-    ctx.fillText("PINCH HOLD", 352, 528);
+    ctx.fillText("PINCH DROP", 352, 528);
 
     ctx.fillStyle = SURFACE;
     ctx.fillRect(16, 16, 568, 44);
@@ -515,10 +526,25 @@
       return;
     }
     if (event.repeat) return;
-    if (key === "left") move(-1, 0);
-    else if (key === "right") move(1, 0);
-    else if (key === "up") rotate(1);
-    else if (key === "enter") holdPiece();
+    if (key === "left") {
+      upTapAt = 0;
+      move(-1, 0);
+    } else if (key === "right") {
+      upTapAt = 0;
+      move(1, 0);
+    } else if (key === "up") {
+      var now = performance.now();
+      if (now - upTapAt < 280 && !holdUsed) {
+        upTapAt = 0;
+        holdPiece();
+      } else {
+        upTapAt = now;
+        rotate(1);
+      }
+    } else if (key === "enter") {
+      upTapAt = 0;
+      hardDrop();
+    }
     focusPlay();
   }
 
@@ -529,6 +555,7 @@
       stopLoop();
       navigateTo("home");
     }     else if (action === "resume") resumeRun();
+    else if (action === "drop") hardDrop();
     else if (action === "hold") holdPiece();
   }
 
