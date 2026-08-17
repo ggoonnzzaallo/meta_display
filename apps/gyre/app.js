@@ -151,11 +151,13 @@
   }
 
   function wallSpeed() {
-    return 168 + Math.min(140, time * 9);
+    var ramp = Math.min(1, time / 36);
+    return 88 + ramp * 150;
   }
 
   function spawnGap() {
-    return 0.72 - Math.min(0.28, time * 0.012);
+    var ramp = Math.min(1, time / 36);
+    return 1.35 - ramp * 0.55;
   }
 
   function spawnWall() {
@@ -181,7 +183,7 @@
     score = 0;
     playerAngle = faceAngle(1);
     walls = [];
-    nextSpawn = 0.55;
+    nextSpawn = 1.2;
     flash = 0;
     lastTs = 0;
     pauseOverlay.classList.add("hidden");
