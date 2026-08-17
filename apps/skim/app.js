@@ -15,13 +15,13 @@
   var SHIP_R = 11;
   var TOP = 64;
   var BOT = 584;
-  var CRUISE = 310;
-  var BOOST_SPD = 540;
+  var CRUISE = 270;
+  var BOOST_SPD = 520;
   var BOOST_T = 0.4;
   var BOOST_CD = 1.1;
-  var IMPULSE = 92;
-  var VY_MAX = 240;
-  var DAMP = 3.6;
+  var IMPULSE = 125;
+  var VY_MAX = 400;
+  var DAMP = 2.5;
   var BEST_KEY = "skim-best";
   var ENDLESS_KEY = "skim-endless";
   var CYAN = "#00D4FF";
@@ -167,6 +167,9 @@
   var endlessBest = 0;
   var seed = 1;
   var campaignTimes = [];
+  var lastNudgeDir = 0;
+  var lastNudgeAt = 0;
+  var lastNudgeChain = 0;
 
   function playKey(event) {
     var k = event.key;
@@ -363,6 +366,9 @@
     flash = 0;
     outcome = "";
     lastTs = 0;
+    lastNudgeDir = 0;
+    lastNudgeAt = 0;
+    lastNudgeChain = 0;
     pauseOverlay.classList.add("hidden");
     navigateTo("play");
     loop();
@@ -439,7 +445,16 @@
   }
 
   function nudge(dir) {
-    vy = clamp(vy + dir * IMPULSE, -VY_MAX, VY_MAX);
+    var now = performance.now();
+    var chain = 1;
+    if (dir === lastNudgeDir && now - lastNudgeAt < 300) {
+      chain = lastNudgeChain + 1;
+    }
+    lastNudgeDir = dir;
+    lastNudgeAt = now;
+    lastNudgeChain = chain;
+    var force = IMPULSE * (chain === 1 ? 1 : chain === 2 ? 1.6 : 2.15);
+    vy = clamp(vy + dir * force, -VY_MAX, VY_MAX);
   }
 
   function tryBoost() {
@@ -626,9 +641,9 @@
       focusPlay();
       return;
     }
-    if (event.repeat) return;
     if (key === "up" || key === "left") nudge(-1);
-    if (key === "down" || key === "right") nudge(1);
+    else if (key === "down" || key === "right") nudge(1);
+    if (event.repeat) return;
     focusPlay();
   }
 
