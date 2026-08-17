@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=600, height=600, initial-scale=1.0, user-scalable=no">
+  <meta name="description" content="Side-scroll racer: tap up and down to skim a canyon, pinch to boost.">
+  <meta name="mrbd-web-app-capable" content="yes">
+  <title>SKIM v1</title>
+  <link rel="icon" href="favicon.png" sizes="128x128" type="image/png">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="stylesheet" href="styles.css?v=1">
+</head>
+<body>
+  <div id="app">
+    <section id="home" class="screen" aria-label="SKIM title">
+      <div class="title-block">
+        <p class="title-tag">CANYON RACE</p>
+        <h1>SKIM</h1>
+        <p class="best-readout">BUILD v1</p>
+        <p id="best-readout" class="best-readout">BEST --.--</p>
+      </div>
+      <div class="menu">
+        <button class="focusable" data-action="play">PLAY</button>
+        <button class="focusable" data-action="endless">ENDLESS</button>
+        <button class="focusable" data-action="how">HOW</button>
+      </div>
+    </section>
+
+    <section id="how" class="screen hidden" aria-label="How to play">
+      <header class="header">
+        <h1>HOW</h1>
+      </header>
+      <div class="content">
+        <ul class="facts">
+          <li>You always fly forward. Tap up or left to climb, down or right to dive.</li>
+          <li>Pinch to boost. Hit a wall, gate, or the canyon and the run is over.</li>
+          <li>Six short courses, then endless. Back pauses.</li>
+        </ul>
+        <button class="focusable" data-action="home">BACK</button>
+      </div>
+    </section>
+
+    <section id="play" class="screen screen-play hidden" aria-label="Race">
+      <canvas id="hud" width="600" height="600"></canvas>
+      <button id="play-btn" class="focusable play-hotspot" data-action="boost" aria-label="Boost"></button>
+      <div id="pause-overlay" class="overlay hidden">
+        <div class="panel">
+          <h2>PAUSED</h2>
+          <button class="focusable" data-action="resume">RESUME</button>
+          <button class="focusable" data-action="quit">QUIT</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="over" class="screen hidden" aria-label="Race over">
+      <header class="header">
+        <h1 id="over-title">CRASHED</h1>
+      </header>
+      <div class="content">
+        <p id="over-stats" class="over-stats">TIME --.--<br>BEST --.--</p>
+        <button class="focusable" data-action="again">AGAIN</button>
+        <button id="next-btn" class="focusable hidden" data-action="next">NEXT</button>
+        <button class="focusable" data-action="home">HOME</button>
+      </div>
+    </section>
+  </div>
+  <script src="app.js?v=1"></script>
+</body>
+</html>
