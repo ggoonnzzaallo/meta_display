@@ -10,7 +10,7 @@
   };
 
   var APPS = [
-    { name: "Cadence", href: "apps/cadence/", version: "v6", updated: "2026-08-17T21:35:00Z", blurb: "Swipe matching arrows on the beat" },
+    { name: "Cadence", href: "apps/cadence/", version: "v7", updated: "2026-08-17T21:54:00Z", blurb: "Swipe matching arrows on the beat" },
     { name: "Apex", href: "apps/apex/", version: "v1", updated: "2026-08-17T19:51:41Z", blurb: "F1 lights out, then brake and turn" },
     { name: "Gyre", href: "apps/gyre/", version: "v5", updated: "2026-08-17T20:39:22Z", blurb: "Rotate through closing hex walls" },
     { name: "Stack", href: "apps/stack/", version: "v4", updated: "2026-08-17T19:51:41Z", blurb: "Pinch to drop and keep the width" },
@@ -77,7 +77,7 @@
       if (app.updated) {
         var when = document.createElement("span");
         when.className = "app-updated";
-        when.textContent = formatPacific(app.updated);
+        when.textContent = "Last updated on " + formatPacific(app.updated);
         button.appendChild(when);
       }
       list.appendChild(button);

@@ -194,6 +194,10 @@ body {
   background: transparent;
   opacity: 1;
   letter-spacing: 0;
+  nav-up: current;
+  nav-down: current;
+  nav-left: current;
+  nav-right: current;
 }
 
 .play-hotspot:focus {

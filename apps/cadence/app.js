@@ -42,14 +42,24 @@
   var overStats = document.getElementById("over-stats");
 
   function playKey(event) {
-    var k = event.key;
-    var c = event.keyCode;
-    if (k === "ArrowUp" || k === "Up" || c === 38) return "up";
-    if (k === "ArrowDown" || k === "Down" || c === 40) return "down";
-    if (k === "ArrowLeft" || k === "Left" || c === 37) return "left";
-    if (k === "ArrowRight" || k === "Right" || c === 39) return "right";
-    if (k === "Enter" || c === 13) return "enter";
-    if (k === "Escape" || c === 27) return "escape";
+    var k = String(event.key || "");
+    var code = String(event.code || "");
+    var c = event.keyCode || event.which || 0;
+    var token = (k + " " + code).toLowerCase();
+    if (c === 38 || token.indexOf("arrowup") !== -1 || token.indexOf("uparrow") !== -1 || k.toLowerCase() === "up") {
+      return "up";
+    }
+    if (c === 40 || token.indexOf("arrowdown") !== -1 || token.indexOf("downarrow") !== -1 || k.toLowerCase() === "down") {
+      return "down";
+    }
+    if (c === 37 || token.indexOf("arrowleft") !== -1 || token.indexOf("leftarrow") !== -1 || k.toLowerCase() === "left") {
+      return "left";
+    }
+    if (c === 39 || token.indexOf("arrowright") !== -1 || token.indexOf("rightarrow") !== -1 || k.toLowerCase() === "right") {
+      return "right";
+    }
+    if (k === "Enter" || code === "Enter" || c === 13) return "enter";
+    if (k === "Escape" || code === "Escape" || c === 27) return "escape";
     return "";
   }
 
@@ -75,6 +85,9 @@
   var flash = 0;
   var perfects = 0;
   var goods = 0;
+  var heldDirs = { 0: false, 1: false, 2: false, 3: false };
+  var lastSwipeAt = 0;
+  var lastSwipeDir = -1;
 
   function pad(n, width) {
     var s = String(Math.max(0, Math.floor(n)));
@@ -116,15 +129,35 @@
     return screens[currentScreen];
   }
 
+  function setInert(el, inert) {
+    if (!el) return;
+    if (inert) el.setAttribute("inert", "");
+    else el.removeAttribute("inert");
+  }
+
+  function setPauseOpen(open) {
+    if (!pauseOverlay) return;
+    pauseOverlay.classList.toggle("hidden", !open);
+    setInert(pauseOverlay, !open);
+    pauseOverlay.querySelectorAll(".focusable").forEach(function (el) {
+      if (open) el.removeAttribute("tabindex");
+      else el.setAttribute("tabindex", "-1");
+    });
+  }
+
   function navigateTo(screenId) {
     Object.keys(screens).forEach(function (id) {
       screens[id].classList.add("hidden");
+      setInert(screens[id], true);
     });
     if (!screens[screenId]) return;
     screens[screenId].classList.remove("hidden");
+    setInert(screens[screenId], false);
     currentScreen = screenId;
-    if (screenId === "play") focusPlay();
-    else focusFirst(screens[screenId]);
+    if (screenId === "play") {
+      setPauseOpen(false);
+      focusPlay();
+    } else focusFirst(screens[screenId]);
   }
 
   function moveFocus(direction) {
@@ -244,7 +277,9 @@
     perfects = 0;
     goods = 0;
     lastTs = 0;
-    pauseOverlay.classList.add("hidden");
+    heldDirs = { 0: false, 1: false, 2: false, 3: false };
+    lastSwipeAt = 0;
+    lastSwipeDir = -1;
     navigateTo("play");
     loop();
   }
@@ -252,7 +287,7 @@
   function pauseRun() {
     if (!running || paused) return;
     paused = true;
-    pauseOverlay.classList.remove("hidden");
+    setPauseOpen(true);
     focusFirst(pauseOverlay);
   }
 
@@ -260,7 +295,7 @@
     if (!running || !paused) return;
     paused = false;
     lastTs = 0;
-    pauseOverlay.classList.add("hidden");
+    setPauseOpen(false);
     focusPlay();
   }
 
@@ -269,7 +304,7 @@
     paused = false;
     if (rafId) cancelAnimationFrame(rafId);
     rafId = 0;
-    pauseOverlay.classList.add("hidden");
+    setPauseOpen(false);
   }
 
   function endRun() {
@@ -469,20 +504,40 @@
     draw();
   }
 
-  function handlePlayKey(event) {
+  function swipeDir(key) {
+    return { up: 0, right: 1, down: 2, left: 3 }[key];
+  }
+
+  function registerSwipe(dir) {
+    var now = performance.now();
+    if (dir === lastSwipeDir && now - lastSwipeAt < 140) return;
+    lastSwipeDir = dir;
+    lastSwipeAt = now;
+    tryHit(dir);
+    focusPlay();
+  }
+
+  function handlePlayKey(event, isKeyUp) {
     var key = playKey(event);
+    if (!key) return;
     if (key === "escape") {
-      pauseRun();
+      if (!isKeyUp) pauseRun();
       return;
     }
     if (key === "enter") {
-      focusPlay();
+      if (!isKeyUp) focusPlay();
       return;
     }
-    if (event.repeat) return;
-    var dir = { up: 0, right: 1, down: 2, left: 3 }[key];
-    if (dir != null) tryHit(dir);
-    focusPlay();
+    var dir = swipeDir(key);
+    if (dir == null) return;
+    if (isKeyUp) {
+      if (!heldDirs[dir]) registerSwipe(dir);
+      heldDirs[dir] = false;
+      return;
+    }
+    if (heldDirs[dir]) return;
+    heldDirs[dir] = true;
+    registerSwipe(dir);
   }
 
   function handleAction(action) {
@@ -495,30 +550,38 @@
     else if (action === "hold") focusPlay();
   }
 
-  document.addEventListener("keydown", function (event) {
+  function onKeyDown(event) {
     if (currentScreen === "play" && running && !paused) {
-      handlePlayKey(event);
+      handlePlayKey(event, false);
       event.preventDefault();
+      event.stopPropagation();
       return;
     }
-    switch (event.key) {
+    var key = playKey(event);
+    switch (key || event.key) {
+      case "up":
       case DPAD.UP:
         moveFocus("up");
         break;
+      case "down":
       case DPAD.DOWN:
         moveFocus("down");
         break;
+      case "left":
       case DPAD.LEFT:
         moveFocus("left");
         break;
+      case "right":
       case DPAD.RIGHT:
         moveFocus("right");
         break;
+      case "enter":
       case DPAD.SELECT:
         if (document.activeElement && document.activeElement.classList.contains("focusable")) {
           document.activeElement.click();
         }
         break;
+      case "escape":
       case DPAD.BACK:
         if (currentScreen === "play" && paused) resumeRun();
         else if (currentScreen !== "home") {
@@ -530,7 +593,18 @@
         return;
     }
     event.preventDefault();
-  });
+  }
+
+  function onKeyUp(event) {
+    if (currentScreen === "play" && running && !paused) {
+      handlePlayKey(event, true);
+      event.preventDefault();
+      event.stopPropagation();
+    }
+  }
+
+  document.addEventListener("keydown", onKeyDown, true);
+  document.addEventListener("keyup", onKeyUp, true);
 
   document.addEventListener("click", function (event) {
     var button = event.target.closest("[data-action]");
@@ -539,6 +613,10 @@
   });
 
   collectScreens();
+  Object.keys(screens).forEach(function (id) {
+    setInert(screens[id], id !== "home");
+  });
+  setPauseOpen(false);
   best = readBest();
   updateBestReadout();
   focusFirst(screens.home);
