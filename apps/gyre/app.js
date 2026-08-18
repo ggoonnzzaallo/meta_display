@@ -14,7 +14,7 @@
   var CX = 300;
   var CY = 318;
   var TAU = Math.PI * 2;
-  var SIDES = 6;
+  var SIDES = 4;
   var PLAYER_R = 78;
   var CORE_R = 42;
   var SPAWN_R = 318;
