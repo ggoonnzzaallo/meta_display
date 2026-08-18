@@ -1,7 +1,7 @@
 {
   "name": "GYRE",
   "short_name": "Gyre",
-  "description": "Rotate with left and right to slip through closing square walls.",
+  "description": "Warp tunnel: start on a triangle, add sides as you last.",
   "icons": [
     { "src": "favicon.png", "sizes": "128x128", "type": "image/png" }
   ],
