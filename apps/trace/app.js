@@ -47,17 +47,12 @@
     figure: 0,
     drawing: false,
     stroke: [],
-    colors: [],
     pencil: { x: 300, y: 300 },
     lastPtr: null,
-    live: null,
-    result: null,
     overlay: "",
     best: loadBest(),
     claimed: [],
     claimedCount: 0,
-    onPathCount: 0,
-    inkLen: 0,
   };
 
   function loadBest() {
@@ -206,20 +201,6 @@
     return densify(pts, closed, TICK_GAP);
   }
 
-  function polylineLen(pts, closed) {
-    var n = pts.length;
-    if (n < 2) return 0;
-    var segs = closed ? n : n - 1;
-    var len = 0;
-    var i;
-    for (i = 0; i < segs; i++) {
-      var a = pts[i];
-      var b = pts[(i + 1) % n];
-      len += Math.hypot(b.x - a.x, b.y - a.y);
-    }
-    return len;
-  }
-
   function makeFigure(name, pts, closed) {
     var path = densify(pts, closed, 4);
     return {
@@ -228,7 +209,6 @@
       path: path,
       ticks: ticksFrom(path, closed),
       start: path[0],
-      length: polylineLen(path, closed),
     };
   }
 
@@ -330,53 +310,10 @@
     return figures[state.figure % figures.length];
   }
 
-  function distToPath(p, fig) {
-    var ticks = fig.ticks;
-    var best = Infinity;
-    var i;
-    for (i = 0; i < ticks.length; i++) {
-      var d = Math.hypot(p.x - ticks[i].x, p.y - ticks[i].y);
-      if (d < best) best = d;
-    }
-    return best;
-  }
-
-  function inkColor(dist) {
-    if (dist < 10) return "#00ff88";
-    if (dist < 22) return "#ffd23f";
-    return "#ff4466";
-  }
-
-  function skillLabel(pct) {
-    if (pct >= 96) return "ARTIST";
-    if (pct >= 88) return "ADULT";
-    if (pct >= 75) return "12-YEAR-OLD";
-    if (pct >= 62) return "10-YEAR-OLD";
-    if (pct >= 48) return "8-YEAR-OLD";
-    if (pct >= 34) return "6-YEAR-OLD";
-    if (pct >= 18) return "4-YEAR-OLD";
-    return "TODDLER";
-  }
-
-  function liveScore() {
-    var fig = currentFigure();
-    var n = state.stroke.length;
-    if (n < 6) {
-      return { score: 0, coverage: 0, onPath: 0, grade: "TODDLER" };
-    }
-    var onPathFrac = state.onPathCount / n;
-    var coverage = fig.ticks.length ? state.claimedCount / fig.ticks.length : 0;
-    var pathLen = Math.max(1, fig.length);
-    var efficiency = 1;
-    if (state.inkLen > pathLen * 1.6) efficiency = (pathLen * 1.6) / state.inkLen;
-    var score = Math.round(100 * coverage * onPathFrac * efficiency);
-    if (onPathFrac < 0.2) score = Math.min(score, 16);
-    return {
-      score: score,
-      coverage: coverage,
-      onPath: onPathFrac,
-      grade: skillLabel(score),
-    };
+  function tracedPct() {
+    var ticks = currentFigure().ticks;
+    if (!ticks.length) return 0;
+    return Math.round((100 * state.claimedCount) / ticks.length);
   }
 
   function claimTicks(pt, fig) {
@@ -392,34 +329,18 @@
   }
 
   function addStrokePoint(pt) {
-    var fig = currentFigure();
-    var last = state.stroke[state.stroke.length - 1];
-    if (last) {
-      state.inkLen += Math.hypot(pt.x - last.x, pt.y - last.y);
-    }
-    var dist = distToPath(pt, fig);
     state.stroke.push(pt);
-    state.colors.push(inkColor(dist));
-    if (dist <= COVER_DIST) {
-      state.onPathCount += 1;
-      claimTicks(pt, fig);
-    }
-    state.live = liveScore();
+    claimTicks(pt, currentFigure());
   }
 
   function resetStroke() {
     var fig = currentFigure();
     state.drawing = false;
     state.stroke = [];
-    state.colors = [];
     state.claimed = [];
     state.claimedCount = 0;
-    state.onPathCount = 0;
-    state.inkLen = 0;
     state.pencil = { x: fig.start.x, y: fig.start.y };
     state.lastPtr = null;
-    state.live = null;
-    state.result = null;
   }
 
   function startRound() {
@@ -443,17 +364,15 @@
     focusFirst(pauseOverlay);
   }
 
-  function showScore(result) {
-    state.result = result;
+  function showScore() {
+    var pct = tracedPct();
     state.overlay = "score";
-    scoreTitle.textContent = result.grade;
-    scoreReadout.textContent = result.score + "%";
-    if (scoreDetail) {
-      scoreDetail.textContent = "of the outline traced";
-    }
+    scoreTitle.textContent = "TRACED";
+    scoreReadout.textContent = pct + "%";
+    if (scoreDetail) scoreDetail.textContent = "of the outline";
     pauseOverlay.classList.add("hidden");
     scoreOverlay.classList.remove("hidden");
-    saveBest(result.score);
+    saveBest(pct);
     focusFirst(scoreOverlay);
   }
 
@@ -462,11 +381,8 @@
     var fig = currentFigure();
     state.drawing = true;
     state.stroke = [];
-    state.colors = [];
     state.claimed = [];
     state.claimedCount = 0;
-    state.onPathCount = 0;
-    state.inkLen = 0;
     addStrokePoint({ x: fig.start.x, y: fig.start.y });
     state.pencil = { x: fig.start.x, y: fig.start.y };
     state.lastPtr = { x: event.clientX, y: event.clientY };
@@ -493,7 +409,7 @@
       state.pencil.y = y;
       return;
     }
-    var steps = Math.max(1, Math.round(gap / 4));
+    var steps = Math.max(1, Math.round(gap / 8));
     var s;
     for (s = 1; s <= steps; s++) {
       var t = s / steps;
@@ -510,7 +426,7 @@
     state.drawing = false;
     state.lastPtr = null;
     suppressSelectUntil = Date.now() + ACTION_MS;
-    showScore(liveScore());
+    showScore();
   }
 
   function drawPath(pts, closed) {
@@ -540,34 +456,17 @@
 
     var k;
     for (k = 0; k < fig.ticks.length; k++) {
+      if (!state.claimed[k]) continue;
       ctx.beginPath();
-      ctx.fillStyle = state.claimed[k] ? "#00ff88" : "#5c6168";
-      ctx.arc(
-        fig.ticks[k].x,
-        fig.ticks[k].y,
-        state.claimed[k] ? 3.5 : 2.4,
-        0,
-        Math.PI * 2
-      );
+      ctx.fillStyle = "#00ff88";
+      ctx.arc(fig.ticks[k].x, fig.ticks[k].y, 3.5, 0, Math.PI * 2);
       ctx.fill();
     }
 
     if (state.stroke.length > 1) {
+      ctx.strokeStyle = "#ffffff";
       ctx.lineWidth = 8;
-      var s = 1;
-      while (s < state.stroke.length) {
-        var color = state.colors[s] || "#ffffff";
-        ctx.beginPath();
-        ctx.strokeStyle = color;
-        ctx.moveTo(state.stroke[s - 1].x, state.stroke[s - 1].y);
-        ctx.lineTo(state.stroke[s].x, state.stroke[s].y);
-        s += 1;
-        while (s < state.stroke.length && (state.colors[s] || "#ffffff") === color) {
-          ctx.lineTo(state.stroke[s].x, state.stroke[s].y);
-          s += 1;
-        }
-        ctx.stroke();
-      }
+      drawPath(state.stroke, false);
     }
 
     var startPulse = 8 + Math.sin(t * 4) * 3;
@@ -611,9 +510,8 @@
     ctx.fillText(state.figure + 1 + " / " + figures.length, 580, 36);
 
     var hint = "PINCH AND DRAG";
-    if (state.drawing && state.live) hint = state.live.score + "% TRACED";
-    if (state.overlay === "score" && state.result) {
-      hint = state.result.score + "% TRACED";
+    if (state.drawing || state.overlay === "score") {
+      hint = tracedPct() + "%";
     }
     ctx.textAlign = "center";
     ctx.fillStyle = "#e4e6eb";

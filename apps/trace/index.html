@@ -5,10 +5,10 @@
   <meta name="viewport" content="width=600, height=600, initial-scale=1.0, user-scalable=no">
   <meta name="description" content="Pinch and drag to trace an outline. Stay close for a higher score.">
   <meta name="mrbd-web-app-capable" content="yes">
-  <title>TRACE v4</title>
+  <title>TRACE v5</title>
   <link rel="icon" href="favicon.png" sizes="128x128" type="image/png">
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="styles.css?v=4">
+  <link rel="stylesheet" href="styles.css?v=5">
 </head>
 <body>
   <div id="app">
@@ -16,7 +16,7 @@
       <div class="title-block">
         <p class="title-tag">PINCH · DRAW</p>
         <h1>TRACE</h1>
-        <p class="best-readout">BUILD v4</p>
+        <p class="best-readout">BUILD v5</p>
         <p id="best-readout" class="best-readout">BEST --</p>
       </div>
       <div class="menu">
@@ -32,8 +32,8 @@
       <div class="content">
         <ul class="facts">
           <li>The pencil starts on the glowing dot. Pinch, hold, and drag to draw.</li>
-          <li>Shapes start easy and get harder. Stay on the line; scribbling does not count.</li>
-          <li>Your score is how much of the outline you actually traced. Back pauses.</li>
+          <li>Shapes start easy and get harder. Stay on the line.</li>
+          <li>Percent is how much of the outline you covered. Back pauses.</li>
         </ul>
         <button class="focusable" type="button" data-action="home">BACK</button>
       </div>
@@ -50,9 +50,9 @@
       </div>
       <div id="score-overlay" class="overlay hidden">
         <div class="panel">
-          <h2 id="score-title">10-YEAR-OLD</h2>
+          <h2 id="score-title">TRACED</h2>
           <p id="score-readout" class="score-readout">72%</p>
-          <p id="score-detail" class="score-detail">of the outline traced</p>
+          <p id="score-detail" class="score-detail">of the outline</p>
           <button class="focusable" type="button" data-action="next">NEXT</button>
           <button class="focusable" type="button" data-action="retry">RETRY</button>
           <button class="focusable" type="button" data-action="quit">QUIT</button>
@@ -60,6 +60,6 @@
       </div>
     </section>
   </div>
-  <script src="app.js?v=4"></script>
+  <script src="app.js?v=5"></script>
 </body>
 </html>
