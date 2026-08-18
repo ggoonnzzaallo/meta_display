@@ -95,26 +95,6 @@ body {
   letter-spacing: 0.16em;
   color: var(--accent);
   line-height: 1;
-  animation: gyre-hue 7s linear infinite;
-}
-
-@keyframes gyre-hue {
-  0% {
-    color: #ff3bd4;
-    text-shadow: 0 0 18px rgba(255, 59, 212, 0.7);
-  }
-  33% {
-    color: #00d4ff;
-    text-shadow: 0 0 18px rgba(0, 212, 255, 0.7);
-  }
-  66% {
-    color: #c8ff00;
-    text-shadow: 0 0 18px rgba(200, 255, 0, 0.7);
-  }
-  100% {
-    color: #ff3bd4;
-    text-shadow: 0 0 18px rgba(255, 59, 212, 0.7);
-  }
 }
 
 .best-readout {

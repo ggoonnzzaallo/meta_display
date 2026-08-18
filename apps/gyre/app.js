@@ -38,18 +38,15 @@
   var paused = false;
   var rafId = 0;
   var lastTs = 0;
-  var time = 0;
   var score = 0;
   var best = 0;
   var sides = MIN_SIDES;
   var playerAngle = 0;
   var walls = [];
-  var streaks = [];
   var nextSpawn = 0;
   var flash = 0;
   var banner = "";
   var bannerT = 0;
-  var hue = 0;
 
   function playKey(event) {
     var k = event.key;
@@ -147,10 +144,6 @@
     return a;
   }
 
-  function hsl(h, s, l, a) {
-    return "hsla(" + (h % 360) + ", " + s + "%, " + l + "%, " + (a == null ? 1 : a) + ")";
-  }
-
   function sidesForScore(s) {
     if (s < 8) return 3;
     if (s < 18) return 4;
@@ -199,7 +192,6 @@
       gap: (Math.random() * sides) | 0,
       wide: sides >= 5 && Math.random() < 0.22,
       scored: false,
-      hue: hue,
     });
   }
 
@@ -216,24 +208,9 @@
     return false;
   }
 
-  function resetStreaks() {
-    streaks = [];
-    var i;
-    for (i = 0; i < 52; i += 1) {
-      streaks.push({
-        a: Math.random() * TAU,
-        z: Math.random(),
-        len: 0.05 + Math.random() * 0.12,
-        spd: 0.28 + Math.random() * 0.5,
-        tint: Math.random(),
-      });
-    }
-  }
-
   function startRun() {
     running = true;
     paused = false;
-    time = 0;
     score = 0;
     sides = MIN_SIDES;
     playerAngle = faceAngle(0, sides);
@@ -242,9 +219,7 @@
     flash = 0;
     banner = "3 SIDES";
     bannerT = 1.2;
-    hue = 200;
     lastTs = 0;
-    resetStreaks();
     pauseOverlay.classList.add("hidden");
     navigateTo("play");
     loop();
@@ -293,23 +268,9 @@
     playerAngle = faceAngle(slot, sides);
   }
 
-  function updateStreaks(dt) {
-    var warp = 0.7 + (sides - MIN_SIDES) * 0.12;
-    streaks.forEach(function (s) {
-      s.z -= s.spd * dt * warp;
-      if (s.z <= 0.04) {
-        s.z = 1;
-        s.a = Math.random() * TAU;
-      }
-    });
-  }
-
   function update(dt) {
-    time += dt;
-    hue = wrapAngle(time * 0.55) * (360 / TAU) + score * 8;
     if (flash > 0) flash -= dt;
     if (bannerT > 0) bannerT -= dt;
-    updateStreaks(dt);
 
     nextSpawn -= dt;
     if (nextSpawn <= 0) {
@@ -356,69 +317,98 @@
     ctx.globalAlpha = 1;
   }
 
-  function drawTunnel() {
-    var i;
-    var depth;
-    var r;
-    var spin = time * 0.12;
-    ctx.save();
-    ctx.translate(CX, CY);
-    ctx.rotate(spin);
-    ctx.translate(-CX, -CY);
-    for (i = 0; i < 11; i += 1) {
-      depth = (i / 11 + time * 0.35) % 1;
-      r = CORE_R + 18 + depth * (SPAWN_R - CORE_R);
-      drawPoly(r, sides, hsl(hue + i * 28, 100, 58), 2 + (1 - depth) * 5, 0.12 + (1 - depth) * 0.28);
-    }
-    ctx.restore();
-  }
-
-  function drawStreaks() {
-    streaks.forEach(function (s) {
-      var r0 = CORE_R + s.z * (SPAWN_R - 10);
-      var r1 = CORE_R + Math.min(1, s.z + s.len) * (SPAWN_R - 10);
-      ctx.strokeStyle = hsl(hue + s.tint * 140, 100, 70, 0.22 + s.z * 0.35);
-      ctx.lineWidth = 1.5 + s.z * 2;
-      ctx.beginPath();
-      ctx.moveTo(CX + Math.cos(s.a) * r0, CY + Math.sin(s.a) * r0);
-      ctx.lineTo(CX + Math.cos(s.a) * r1, CY + Math.sin(s.a) * r1);
-      ctx.stroke();
-    });
-  }
-
   function drawWall(wall) {
     var i;
-    var ghost;
     var a;
     var b;
     var n = wall.sides;
     var near = 1 - Math.max(0, Math.min(1, (wall.r - PLAYER_R) / (SPAWN_R - PLAYER_R)));
-    ctx.lineCap = "round";
-    ctx.lineJoin = "round";
-    for (ghost = 2; ghost >= 0; ghost -= 1) {
-      var gr = wall.r + ghost * 16;
-      if (gr > SPAWN_R + 8) continue;
-      for (i = 0; i < n; i += 1) {
-        a = polyPoint(gr, i, n);
-        b = polyPoint(gr, i + 1, n);
-        ctx.beginPath();
-        ctx.moveTo(a.x, a.y);
-        ctx.lineTo(b.x, b.y);
-        if (isGap(wall, i)) {
-          ctx.strokeStyle = "rgba(0, 255, 136, " + (0.18 + near * 0.55) / (ghost + 1) + ")";
-          ctx.lineWidth = (8 + near * 8) / (ghost + 1);
-          ctx.shadowColor = GREEN;
-          ctx.shadowBlur = ghost === 0 ? 14 : 0;
-        } else {
-          ctx.strokeStyle = hsl(wall.hue + i * 18, 100, 58, (0.35 + near * 0.65) / (ghost + 1));
-          ctx.lineWidth = (11 + near * 10) / (ghost + 1);
-          ctx.shadowColor = hsl(wall.hue, 100, 60);
-          ctx.shadowBlur = ghost === 0 ? 12 : 0;
-        }
-        ctx.stroke();
-        ctx.shadowBlur = 0;
-      }
+    ctx.lineCap = "butt";
+    ctx.lineJoin = "miter";
+    ctx.shadowBlur = 0;
+
+    for (i = 0; i < n; i += 1) {
+      if (isGap(wall, i)) continue;
+      a = polyPoint(wall.r, i, n);
+      b = polyPoint(wall.r, i + 1, n);
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y);
+      ctx.lineTo(b.x, b.y);
+      ctx.strokeStyle = RED;
+      ctx.globalAlpha = 0.92 + near * 0.08;
+      ctx.lineWidth = 20 + near * 8;
+      ctx.shadowColor = RED;
+      ctx.shadowBlur = 10;
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+      ctx.globalAlpha = 1;
     }
+
+    for (i = 0; i < n; i += 1) {
+      if (!isGap(wall, i)) continue;
+      var inner0 = polyPoint(PLAYER_R - 2, i, n);
+      var inner1 = polyPoint(PLAYER_R - 2, i + 1, n);
+      var outer0 = polyPoint(wall.r, i, n);
+      var outer1 = polyPoint(wall.r, i + 1, n);
+      ctx.beginPath();
+      ctx.moveTo(inner0.x, inner0.y);
+      ctx.lineTo(inner1.x, inner1.y);
+      ctx.lineTo(outer1.x, outer1.y);
+      ctx.lineTo(outer0.x, outer0.y);
+      ctx.closePath();
+      ctx.fillStyle = "rgba(0, 255, 136, " + (0.34 + near * 0.4) + ")";
+      ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(outer0.x, outer0.y);
+      ctx.lineTo(outer1.x, outer1.y);
+      ctx.strokeStyle = GREEN;
+      ctx.lineWidth = 14 + near * 6;
+      ctx.shadowColor = GREEN;
+      ctx.shadowBlur = 22;
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+    }
+  }
+
+  function drawPlayerLane() {
+    var i;
+    var a;
+    var b;
+    var slot = sector(playerAngle, sides);
+    var inner0 = polyPoint(CORE_R + 6, slot, sides);
+    var inner1 = polyPoint(CORE_R + 6, slot + 1, sides);
+    var outer0 = polyPoint(PLAYER_R, slot, sides);
+    var outer1 = polyPoint(PLAYER_R, slot + 1, sides);
+    ctx.lineCap = "butt";
+    for (i = 0; i < sides; i += 1) {
+      a = polyPoint(PLAYER_R, i, sides);
+      b = polyPoint(PLAYER_R, i + 1, sides);
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y);
+      ctx.lineTo(b.x, b.y);
+      ctx.strokeStyle = CREAM;
+      ctx.globalAlpha = 0.22;
+      ctx.lineWidth = 3;
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
+    ctx.beginPath();
+    ctx.moveTo(inner0.x, inner0.y);
+    ctx.lineTo(inner1.x, inner1.y);
+    ctx.lineTo(outer1.x, outer1.y);
+    ctx.lineTo(outer0.x, outer0.y);
+    ctx.closePath();
+    ctx.fillStyle = "rgba(255, 244, 224, 0.42)";
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(outer0.x, outer0.y);
+    ctx.lineTo(outer1.x, outer1.y);
+    ctx.strokeStyle = CREAM;
+    ctx.lineWidth = 10;
+    ctx.shadowColor = CREAM;
+    ctx.shadowBlur = 14;
+    ctx.stroke();
+    ctx.shadowBlur = 0;
   }
 
   function drawPlayer() {
@@ -434,8 +424,8 @@
     ctx.lineTo(px + tx * 13 - ca * 9, py + ty * 13 - sa * 9);
     ctx.closePath();
     ctx.fillStyle = CREAM;
-    ctx.shadowColor = hsl(hue, 100, 70);
-    ctx.shadowBlur = 16;
+    ctx.shadowColor = CREAM;
+    ctx.shadowBlur = 12;
     ctx.fill();
     ctx.shadowBlur = 0;
   }
@@ -448,37 +438,29 @@
     ctx.textAlign = "left";
     ctx.textBaseline = "alphabetic";
     ctx.fillText("GATES " + pad(score, 5), 28, 47);
-    ctx.fillStyle = hsl(hue, 100, 65);
+    ctx.fillStyle = CREAM;
     ctx.font = "700 16px ui-monospace, monospace";
     ctx.fillText(sides + " SIDES", 220, 47);
     ctx.textAlign = "right";
     ctx.fillStyle = GREEN;
     ctx.font = "700 14px ui-monospace, monospace";
-    ctx.fillText("TAP L/R", 568, 47);
+    ctx.fillText("GREEN GAP", 568, 47);
 
     if (bannerT > 0) {
       ctx.textAlign = "center";
       ctx.globalAlpha = Math.min(1, bannerT * 2);
-      ctx.fillStyle = hsl(hue, 100, 70);
+      ctx.fillStyle = CREAM;
       ctx.font = "700 36px ui-monospace, monospace";
-      ctx.shadowColor = hsl(hue, 100, 60);
-      ctx.shadowBlur = 18;
       ctx.fillText(banner, CX, 120);
-      ctx.shadowBlur = 0;
       ctx.globalAlpha = 1;
     }
   }
 
   function draw() {
     ctx.clearRect(0, 0, SIZE, SIZE);
-    drawTunnel();
-    drawStreaks();
     walls.forEach(drawWall);
-    drawPoly(CORE_R, sides, hsl(hue, 100, 62), 3, 0.85);
-    ctx.beginPath();
-    ctx.arc(CX, CY, 7, 0, TAU);
-    ctx.fillStyle = hsl(hue + 180, 100, 60);
-    ctx.fill();
+    drawPoly(CORE_R, sides, CREAM, 3, 0.7);
+    drawPlayerLane();
     drawPlayer();
 
     if (flash > 0) {

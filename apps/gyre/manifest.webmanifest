@@ -1,7 +1,7 @@
 {
   "name": "GYRE",
   "short_name": "Gyre",
-  "description": "Warp tunnel: start on a triangle, add sides as you last.",
+  "description": "Rotate onto the cream face and slip through the green gap.",
   "icons": [
     { "src": "favicon.png", "sizes": "128x128", "type": "image/png" }
   ],
