@@ -277,20 +277,6 @@
     return pts;
   }
 
-  function infinity(cx, cy, rx, ry) {
-    var pts = [];
-    var i;
-    var n = 80;
-    for (i = 0; i < n; i++) {
-      var t = (i / n) * Math.PI * 2;
-      pts.push({
-        x: cx + rx * Math.sin(t),
-        y: cy + ry * Math.sin(t) * Math.cos(t),
-      });
-    }
-    return pts;
-  }
-
   function arch(cx, cy, r) {
     var pts = [];
     var i;
@@ -367,6 +353,22 @@
     return pts;
   }
 
+  function metaMark(cx, cy, a) {
+    var pts = [];
+    var n = 96;
+    var i;
+    var s = a * Math.sqrt(2);
+    for (i = 0; i < n; i++) {
+      var t = (i / n) * Math.PI * 2;
+      var d = 1 + Math.sin(t) * Math.sin(t);
+      pts.push({
+        x: cx + (s * Math.cos(t)) / d,
+        y: cy + (s * Math.cos(t) * Math.sin(t)) / d,
+      });
+    }
+    return pts;
+  }
+
   function buildFigures() {
     var cx = 300;
     var cy = 318;
@@ -406,8 +408,8 @@
       makeFigure("MOON", moon(cx - 10, cy, 170), true),
       makeFigure("STAR", star(cx, cy, 176, 78, 5), true),
       makeFigure("BOLT", bolt(), false),
-      makeFigure("LOOP", infinity(cx, cy, 190, 110), true),
       makeFigure("SPIRAL", spiral(cx, cy, 22, 168, 2.2), false),
+      makeFigure("META", metaMark(cx, cy, 148), true),
     ];
   }
 
