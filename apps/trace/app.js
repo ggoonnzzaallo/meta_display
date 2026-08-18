@@ -39,6 +39,7 @@
     y: 0,
     moved: false,
   };
+  var lastRelease = { x: -9999, y: -9999 };
   var audioCtx = null;
   var traceOnOsc = null;
   var traceOffOsc = null;
@@ -408,13 +409,13 @@
     var ctx = ensureAudio();
     if (!ctx) return;
     stopTraceTone();
-    var on = startVoice(ctx, 660, "sine");
+    var on = startVoice(ctx, 523, "sine");
     var off = startVoice(ctx, 280, "triangle");
     traceOnOsc = on.osc;
     traceOnGain = on.gain;
     traceOffOsc = off.osc;
     traceOffGain = off.gain;
-    fadeGain(traceOnGain, 0.016, 0.05);
+    fadeGain(traceOnGain, 0.018, 0.05);
     traceOnPath = true;
   }
 
@@ -422,7 +423,7 @@
     if (!traceOnGain || !traceOffGain) return;
     if (traceOnPath === onPath) return;
     traceOnPath = onPath;
-    fadeGain(traceOnGain, onPath ? 0.016 : 0.0001, 0.07);
+    fadeGain(traceOnGain, onPath ? 0.018 : 0.0001, 0.07);
     fadeGain(traceOffGain, onPath ? 0.0001 : 0.014, 0.07);
   }
 
@@ -639,6 +640,9 @@
     scoreOverlay.classList.remove("hidden");
     saveBest(pct);
     focusFirst(scoreOverlay);
+    requestAnimationFrame(function () {
+      if (state.overlay === "score") focusFirst(scoreOverlay);
+    });
     if (pass) sfxPass();
     else sfxFail();
   }
@@ -849,9 +853,23 @@
   }
 
   function hitFocusable(event) {
-    return event.target && event.target.closest
-      ? event.target.closest(".focusable")
-      : null;
+    var el =
+      event.target && event.target.closest
+        ? event.target.closest(".focusable")
+        : null;
+    return isFocusable(el) ? el : null;
+  }
+
+  function pointerNearRelease(event) {
+    return (
+      Math.hypot(event.clientX - lastRelease.x, event.clientY - lastRelease.y) <=
+      TAP_PX + 12
+    );
+  }
+
+  function trustedPointerHit(event) {
+    if (pointerNearRelease(event)) return null;
+    return hitFocusable(event);
   }
 
   function canDraw() {
@@ -872,7 +890,10 @@
       tap.moved = false;
       tap.x = event.clientX;
       tap.y = event.clientY;
-      if (canDraw()) {
+      if (!canDraw()) {
+        var hit = trustedPointerHit(event);
+        if (hit) hit.focus();
+      } else {
         tap.drawing = true;
         beginStroke(event);
       }
@@ -902,11 +923,17 @@
       tap.active = false;
       tap.drawing = false;
       if (wasDrawing) {
+        lastRelease.x = event.clientX;
+        lastRelease.y = event.clientY;
         endStroke();
         return;
       }
       if (moved) return;
-      activateControl(hitFocusable(event) || focusedControl());
+      if (state.overlay) {
+        activateControl(focusedControl());
+        return;
+      }
+      activateControl(trustedPointerHit(event) || focusedControl());
     },
     { passive: false }
   );
