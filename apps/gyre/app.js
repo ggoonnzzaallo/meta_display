@@ -20,6 +20,7 @@
   var CORE_R = 40;
   var SPAWN_R = 330;
   var BEST_KEY = "gyre-best";
+  var SHAPE_CLEAR_WAIT = 1.15;
   var CREAM = "#FFF4E0";
   var GREEN = "#00FF88";
   var RED = "#FF3333";
@@ -164,12 +165,13 @@
   }
 
   function snapToSides(n) {
-    if (n === sides) return;
+    if (n === sides) return false;
     var ang = playerAngle;
     sides = n;
     playerAngle = faceAngle(sector(ang, n), n);
     banner = n + " SIDES";
     bannerT = 1.4;
+    return true;
   }
 
   function wallSpeed() {
@@ -280,20 +282,28 @@
 
     var speed = wallSpeed();
     var dead = false;
+    var reshaped = false;
     walls.forEach(function (wall) {
+      if (reshaped) return;
       wall.r -= speed * dt;
       if (!wall.scored && wall.r <= PLAYER_R) {
         if (!playerSafe(wall)) dead = true;
         else {
           wall.scored = true;
           score += 1;
-          snapToSides(sidesForScore(score));
+          reshaped = snapToSides(sidesForScore(score));
         }
       }
     });
-    walls = walls.filter(function (wall) {
-      return wall.r > CORE_R + 8;
-    });
+    if (reshaped) {
+      walls = [];
+      nextSpawn = SHAPE_CLEAR_WAIT;
+      dead = false;
+    } else {
+      walls = walls.filter(function (wall) {
+        return wall.r > CORE_R + 8;
+      });
+    }
     if (dead) {
       flash = 0.22;
       endRun();
