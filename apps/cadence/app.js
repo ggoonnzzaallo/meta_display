@@ -88,6 +88,7 @@
   var heldDirs = { 0: false, 1: false, 2: false, 3: false };
   var lastSwipeAt = 0;
   var lastSwipeDir = -1;
+  var bursts = [];
 
   function pad(n, width) {
     var s = String(Math.max(0, Math.floor(n)));
@@ -217,6 +218,7 @@
     judgePts = "";
     judgeT = 0.35;
     flash = 0.18;
+    spawnBurst(CX, CY, RED, 8);
     if (hp <= 0) endRun();
   }
 
@@ -236,6 +238,12 @@
     score += gained;
     judgePts = "+" + gained;
     judgeT = 0.32;
+    spawnBurst(
+      CX + DIRS[note.dir].x * RING,
+      CY + DIRS[note.dir].y * RING,
+      err <= 0.09 ? GREEN : CYAN,
+      err <= 0.09 ? 12 : 8
+    );
   }
 
   function tryHit(dir) {
@@ -280,6 +288,7 @@
     heldDirs = { 0: false, 1: false, 2: false, 3: false };
     lastSwipeAt = 0;
     lastSwipeDir = -1;
+    bursts = [];
     navigateTo("play");
     loop();
   }
@@ -333,6 +342,7 @@
     time += dt;
     if (judgeT > 0) judgeT -= dt;
     if (flash > 0) flash -= dt;
+    updateBursts(dt);
 
     while (chartI < chart.length && chart[chartI].t <= time) {
       var item = chart[chartI];
@@ -362,7 +372,55 @@
     if (chartI >= chart.length && !notes.length && hp > 0) endRun();
   }
 
-  function drawChevron(x, y, dir, size, color) {
+  function spawnBurst(x, y, color, n) {
+    var i;
+    for (i = 0; i < n; i += 1) {
+      var a = (Math.PI * 2 * i) / n + Math.random() * 0.35;
+      var spd = 60 + Math.random() * 110;
+      bursts.push({
+        x: x,
+        y: y,
+        vx: Math.cos(a) * spd,
+        vy: Math.sin(a) * spd,
+        t: 0.34,
+        max: 0.34,
+        color: color,
+      });
+    }
+  }
+
+  function updateBursts(dt) {
+    bursts.forEach(function (b) {
+      b.t -= dt;
+      b.x += b.vx * dt;
+      b.y += b.vy * dt;
+    });
+    bursts = bursts.filter(function (b) {
+      return b.t > 0;
+    });
+  }
+
+  function setGlow(color, blur) {
+    ctx.shadowColor = color;
+    ctx.shadowBlur = blur;
+  }
+
+  function clearGlow() {
+    ctx.shadowBlur = 0;
+    ctx.shadowColor = "transparent";
+  }
+
+  function roundRect(x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+
+  function chevronPath(x, y, dir, size) {
     var vx = DIRS[dir].x;
     var vy = DIRS[dir].y;
     var px = -vy;
@@ -370,11 +428,24 @@
     ctx.beginPath();
     ctx.moveTo(x - vx * size, y - vy * size);
     ctx.lineTo(x + px * size * 0.72, y + py * size * 0.72);
-    ctx.lineTo(x + vx * size * 0.2, y + vy * size * 0.2);
+    ctx.lineTo(x + vx * size * 0.22, y + vy * size * 0.22);
     ctx.lineTo(x - px * size * 0.72, y - py * size * 0.72);
     ctx.closePath();
+  }
+
+  function drawChevron(x, y, dir, size, color, glow) {
+    var prev = ctx.globalAlpha;
+    chevronPath(x, y, dir, size);
+    if (glow) setGlow(color, glow);
     ctx.fillStyle = color;
+    ctx.globalAlpha = prev;
     ctx.fill();
+    ctx.lineWidth = Math.max(1.5, size * 0.08);
+    ctx.strokeStyle = CREAM;
+    ctx.globalAlpha = prev * 0.55;
+    ctx.stroke();
+    ctx.globalAlpha = prev;
+    clearGlow();
   }
 
   function incomingHint() {
@@ -392,16 +463,177 @@
   }
 
   function drawLane(dir, hot) {
-    var x0 = CX + dir.x * (RING + 18);
-    var y0 = CY + dir.y * (RING + 18);
-    var x1 = CX + dir.x * (SPAWN - 8);
-    var y1 = CY + dir.y * (SPAWN - 8);
-    ctx.strokeStyle = hot ? "rgba(0, 212, 255, 0.45)" : "rgba(28, 30, 33, 0.9)";
-    ctx.lineWidth = hot ? 18 : 12;
+    var x0 = CX + dir.x * (RING + 16);
+    var y0 = CY + dir.y * (RING + 16);
+    var x1 = CX + dir.x * (SPAWN - 6);
+    var y1 = CY + dir.y * (SPAWN - 6);
+    ctx.save();
+    ctx.lineCap = "round";
+    ctx.setLineDash(hot ? [] : [8, 14]);
+    ctx.strokeStyle = hot ? "rgba(0, 212, 255, 0.55)" : "rgba(180, 190, 200, 0.28)";
+    ctx.lineWidth = hot ? 9 : 3;
+    if (hot) setGlow(CYAN, 12);
     ctx.beginPath();
     ctx.moveTo(x0, y0);
     ctx.lineTo(x1, y1);
     ctx.stroke();
+    clearGlow();
+    ctx.restore();
+  }
+
+  function drawRing(nearest) {
+    var perfect = judgeT > 0 && judge === "PERFECT";
+    var ringColor = perfect ? GREEN : CYAN;
+    var pulse = 1 + Math.sin(time * 5.2) * 0.012;
+    var r = RING * pulse;
+
+    ctx.beginPath();
+    ctx.arc(CX, CY, r + 16, 0, Math.PI * 2);
+    ctx.strokeStyle = "rgba(0, 212, 255, 0.12)";
+    ctx.lineWidth = 10;
+    ctx.stroke();
+
+    setGlow(ringColor, perfect ? 22 : 14);
+    ctx.beginPath();
+    ctx.arc(CX, CY, r, 0, Math.PI * 2);
+    ctx.strokeStyle = ringColor;
+    ctx.lineWidth = 5;
+    ctx.stroke();
+    clearGlow();
+
+    ctx.beginPath();
+    ctx.arc(CX, CY, r - 9, 0, Math.PI * 2);
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.28)";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.arc(CX, CY, 5, 0, Math.PI * 2);
+    ctx.fillStyle = ringColor;
+    setGlow(ringColor, 10);
+    ctx.fill();
+    clearGlow();
+
+    DIRS.forEach(function (dir, i) {
+      var hot = nearest && nearest.dir === i;
+      var tick0 = RING + 10;
+      var tick1 = RING + 22;
+      ctx.beginPath();
+      ctx.moveTo(CX + dir.x * tick0, CY + dir.y * tick0);
+      ctx.lineTo(CX + dir.x * tick1, CY + dir.y * tick1);
+      ctx.strokeStyle = hot ? CYAN : "rgba(176, 179, 184, 0.7)";
+      ctx.lineWidth = hot ? 4 : 2;
+      ctx.stroke();
+      drawChevron(
+        CX + dir.x * (RING - 2),
+        CY + dir.y * (RING - 2),
+        i,
+        hot ? 17 : 14,
+        hot ? CYAN : MUTED,
+        hot ? 10 : 0
+      );
+    });
+
+    ctx.fillStyle = MUTED;
+    ctx.font = "700 12px ui-monospace, monospace";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("UP", CX, CY - RING - 30);
+    ctx.fillText("DOWN", CX, CY + RING + 30);
+    ctx.fillText("LEFT", CX - RING - 38, CY);
+    ctx.fillText("RIGHT", CX + RING + 42, CY);
+  }
+
+  function drawNote(note) {
+    var pos = notePos(note);
+    var inWindow = pos.p > 0.9 && pos.p < 1.1;
+    var color = note.hit ? CYAN : note.missed ? RED : inWindow ? CYAN : CREAM;
+    var size = note.hit ? 12 : inWindow ? 30 : 18 + pos.p * 8;
+    var trail;
+    if (!note.hit && !note.missed && pos.p > 0.12) {
+      for (trail = 2; trail >= 1; trail -= 1) {
+        var tp = Math.max(0, pos.p - trail * 0.07);
+        var tr = SPAWN + (RING - SPAWN) * Math.min(tp, 1.28);
+        var dir = DIRS[note.dir];
+        ctx.globalAlpha = 0.16 * trail;
+        drawChevron(CX + dir.x * tr, CY + dir.y * tr, note.dir, size * (0.7 + trail * 0.08), color, 0);
+      }
+      ctx.globalAlpha = 1;
+    }
+    ctx.globalAlpha = note.hit ? 0.3 : note.missed ? 0.35 : 1;
+    drawChevron(pos.x, pos.y, note.dir, size, color, inWindow && !note.hit ? 16 : 0);
+    ctx.globalAlpha = 1;
+  }
+
+  function drawBursts() {
+    bursts.forEach(function (b) {
+      var a = Math.max(0, b.t / b.max);
+      ctx.globalAlpha = a;
+      ctx.fillStyle = b.color;
+      ctx.beginPath();
+      ctx.arc(b.x, b.y, 2.2 + (1 - a) * 2, 0, Math.PI * 2);
+      ctx.fill();
+    });
+    ctx.globalAlpha = 1;
+  }
+
+  function drawHud(nearest) {
+    roundRect(16, 16, 568, 48, 12);
+    ctx.fillStyle = "rgba(28, 30, 33, 0.92)";
+    ctx.fill();
+    ctx.strokeStyle = "rgba(0, 212, 255, 0.35)";
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    ctx.fillStyle = CREAM;
+    ctx.font = "700 18px ui-monospace, monospace";
+    ctx.textAlign = "left";
+    ctx.textBaseline = "alphabetic";
+    ctx.fillText("SCORE " + pad(score, 5), 32, 47);
+    ctx.fillStyle = CYAN;
+    ctx.font = "700 14px ui-monospace, monospace";
+    ctx.fillText("PERF " + pad(perfects, 3), 214, 47);
+    ctx.textAlign = "right";
+    ctx.fillStyle = combo > 4 ? GREEN : CREAM;
+    ctx.font = "700 18px ui-monospace, monospace";
+    if (combo > 4) setGlow(GREEN, 8);
+    ctx.fillText("x" + combo, 568, 47);
+    clearGlow();
+
+    var i;
+    for (i = 0; i < HP_MAX; i += 1) {
+      var lx = 332 + i * 26;
+      ctx.beginPath();
+      ctx.moveTo(lx + 8, 28);
+      ctx.lineTo(lx + 16, 36);
+      ctx.lineTo(lx + 8, 44);
+      ctx.lineTo(lx, 36);
+      ctx.closePath();
+      ctx.fillStyle = i < hp ? CYAN : "rgba(42, 45, 49, 0.9)";
+      if (i < hp) setGlow(CYAN, 6);
+      ctx.fill();
+      clearGlow();
+    }
+
+    var hint = nearest
+      ? { line: "SWIPE " + DIRS[nearest.dir].label, sub: "When it reaches the ring" }
+      : { line: "WAIT", sub: "An arrow will fly in" };
+    roundRect(40, 500, 520, 76, 14);
+    ctx.fillStyle = "rgba(28, 30, 33, 0.92)";
+    ctx.fill();
+    ctx.strokeStyle = nearest ? "rgba(0, 212, 255, 0.55)" : "rgba(176, 179, 184, 0.28)";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    if (nearest) {
+      drawChevron(92, 538, nearest.dir, 16, CYAN, 8);
+    }
+    ctx.textAlign = "center";
+    ctx.fillStyle = CREAM;
+    ctx.font = "700 26px ui-monospace, monospace";
+    ctx.fillText(hint.line, CX + (nearest ? 10 : 0), 534);
+    ctx.fillStyle = MUTED;
+    ctx.font = "700 14px ui-monospace, monospace";
+    ctx.fillText(hint.sub, CX, 560);
   }
 
   function draw() {
@@ -411,85 +643,35 @@
     DIRS.forEach(function (dir, i) {
       drawLane(dir, nearest && nearest.dir === i);
     });
-
-    ctx.strokeStyle = SURFACE;
-    ctx.lineWidth = 18;
-    ctx.beginPath();
-    ctx.arc(CX, CY, RING, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.strokeStyle = judgeT > 0 && judge === "PERFECT" ? GREEN : CYAN;
-    ctx.lineWidth = 5;
-    ctx.beginPath();
-    ctx.arc(CX, CY, RING, 0, Math.PI * 2);
-    ctx.stroke();
-
-    DIRS.forEach(function (dir, i) {
-      var hot = nearest && nearest.dir === i;
-      drawChevron(CX + dir.x * (RING - 2), CY + dir.y * (RING - 2), i, 16, hot ? CYAN : MUTED);
-    });
-
-    notes.forEach(function (note) {
-      var pos = notePos(note);
-      var inWindow = pos.p > 0.9 && pos.p < 1.1;
-      var color = note.hit ? CYAN : note.missed ? RED : inWindow ? CYAN : CREAM;
-      var size = note.hit ? 12 : inWindow ? 30 : 24;
-      ctx.globalAlpha = note.hit ? 0.35 : note.missed ? 0.4 : 1;
-      drawChevron(pos.x, pos.y, note.dir, size, color);
-      ctx.globalAlpha = 1;
-    });
+    drawRing(nearest);
+    notes.forEach(drawNote);
+    drawBursts();
 
     if (flash > 0) {
-      ctx.fillStyle = "rgba(255, 51, 51, " + flash * 0.35 + ")";
+      ctx.fillStyle = "rgba(255, 51, 51, " + flash * 0.32 + ")";
       ctx.fillRect(0, 0, SIZE, SIZE);
     }
 
-    ctx.fillStyle = SURFACE;
-    ctx.fillRect(16, 16, 568, 44);
-    ctx.fillStyle = CREAM;
-    ctx.font = "700 18px ui-monospace, monospace";
-    ctx.textAlign = "left";
-    ctx.textBaseline = "alphabetic";
-    ctx.fillText("SCORE " + pad(score, 5), 28, 45);
-    ctx.fillStyle = CYAN;
-    ctx.font = "700 14px ui-monospace, monospace";
-    ctx.fillText("PERF " + pad(perfects, 3), 210, 45);
-    ctx.textAlign = "right";
-    ctx.fillStyle = CREAM;
-    ctx.font = "700 18px ui-monospace, monospace";
-    ctx.fillText("x" + combo, 572, 45);
-
-    var i;
-    for (i = 0; i < HP_MAX; i += 1) {
-      ctx.fillStyle = i < hp ? CYAN : "#2A2D31";
-      ctx.fillRect(320 + i * 28, 28, 20, 16);
-    }
-
-    var hint = nearest
-      ? { line: "SWIPE " + DIRS[nearest.dir].label, sub: "When it reaches the ring" }
-      : { line: "WAIT", sub: "An arrow will fly in" };
-    ctx.fillStyle = SURFACE;
-    ctx.fillRect(40, 500, 520, 72);
-    ctx.textAlign = "center";
-    ctx.fillStyle = CREAM;
-    ctx.font = "700 26px ui-monospace, monospace";
-    ctx.fillText(hint.line, CX, 532);
-    ctx.fillStyle = MUTED;
-    ctx.font = "700 14px ui-monospace, monospace";
-    ctx.fillText(hint.sub, CX, 556);
+    drawHud(nearest);
 
     if (judgeT > 0) {
+      var jColor = judge === "PERFECT" ? CYAN : judge === "GOOD" ? AMBER : RED;
       ctx.textAlign = "center";
-      ctx.fillStyle = judge === "PERFECT" ? CYAN : judge === "GOOD" ? AMBER : RED;
-      ctx.font = "700 28px ui-monospace, monospace";
+      ctx.textBaseline = "alphabetic";
+      setGlow(jColor, 16);
+      ctx.fillStyle = jColor;
+      ctx.font = "700 32px ui-monospace, monospace";
       ctx.fillText(judge, CX, CY + 8);
+      clearGlow();
       if (judgePts) {
         ctx.font = "700 18px ui-monospace, monospace";
         ctx.fillStyle = judge === "PERFECT" ? CYAN : CREAM;
-        ctx.fillText(judgePts, CX, CY + 32);
+        ctx.fillText(judgePts, CX, CY + 34);
       }
     }
 
     ctx.textAlign = "left";
+    ctx.textBaseline = "alphabetic";
   }
 
   function loop(ts) {

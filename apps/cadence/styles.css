@@ -95,6 +95,29 @@ body {
   letter-spacing: 0.16em;
   color: var(--accent);
   line-height: 1;
+  text-shadow:
+    0 0 16px rgba(0, 212, 255, 0.75),
+    0 0 36px rgba(0, 212, 255, 0.35);
+}
+
+.title-ring {
+  width: 96px;
+  height: 96px;
+  margin: 0 auto 10px;
+  border: 3px solid var(--accent);
+  border-radius: 50%;
+  box-shadow:
+    0 0 16px rgba(0, 212, 255, 0.55),
+    inset 0 0 18px rgba(0, 212, 255, 0.2);
+  position: relative;
+}
+
+.title-ring::after {
+  content: "";
+  position: absolute;
+  inset: 18px;
+  border: 2px solid rgba(0, 212, 255, 0.45);
+  border-radius: 50%;
 }
 
 .best-readout {
