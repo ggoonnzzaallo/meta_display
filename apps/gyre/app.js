@@ -322,10 +322,12 @@
     var a;
     var b;
     var n = wall.sides;
-    var near = 1 - Math.max(0, Math.min(1, (wall.r - PLAYER_R) / (SPAWN_R - PLAYER_R)));
+    var passed = wall.scored || wall.r < PLAYER_R;
+    var width = passed ? 3 : 5;
     ctx.lineCap = "butt";
     ctx.lineJoin = "miter";
     ctx.shadowBlur = 0;
+    ctx.globalAlpha = passed ? 0.32 : 1;
 
     for (i = 0; i < n; i += 1) {
       if (isGap(wall, i)) continue;
@@ -335,39 +337,28 @@
       ctx.moveTo(a.x, a.y);
       ctx.lineTo(b.x, b.y);
       ctx.strokeStyle = RED;
-      ctx.globalAlpha = 0.92 + near * 0.08;
-      ctx.lineWidth = 20 + near * 8;
+      ctx.lineWidth = width;
       ctx.shadowColor = RED;
-      ctx.shadowBlur = 10;
+      ctx.shadowBlur = passed ? 0 : 8;
       ctx.stroke();
       ctx.shadowBlur = 0;
-      ctx.globalAlpha = 1;
     }
 
     for (i = 0; i < n; i += 1) {
       if (!isGap(wall, i)) continue;
-      var inner0 = polyPoint(PLAYER_R - 2, i, n);
-      var inner1 = polyPoint(PLAYER_R - 2, i + 1, n);
-      var outer0 = polyPoint(wall.r, i, n);
-      var outer1 = polyPoint(wall.r, i + 1, n);
+      a = polyPoint(wall.r, i, n);
+      b = polyPoint(wall.r, i + 1, n);
       ctx.beginPath();
-      ctx.moveTo(inner0.x, inner0.y);
-      ctx.lineTo(inner1.x, inner1.y);
-      ctx.lineTo(outer1.x, outer1.y);
-      ctx.lineTo(outer0.x, outer0.y);
-      ctx.closePath();
-      ctx.fillStyle = "rgba(0, 255, 136, " + (0.34 + near * 0.4) + ")";
-      ctx.fill();
-      ctx.beginPath();
-      ctx.moveTo(outer0.x, outer0.y);
-      ctx.lineTo(outer1.x, outer1.y);
+      ctx.moveTo(a.x, a.y);
+      ctx.lineTo(b.x, b.y);
       ctx.strokeStyle = GREEN;
-      ctx.lineWidth = 14 + near * 6;
+      ctx.lineWidth = width + 1;
       ctx.shadowColor = GREEN;
-      ctx.shadowBlur = 22;
+      ctx.shadowBlur = passed ? 0 : 10;
       ctx.stroke();
       ctx.shadowBlur = 0;
     }
+    ctx.globalAlpha = 1;
   }
 
   function drawPlayerLane() {
@@ -398,15 +389,15 @@
     ctx.lineTo(outer1.x, outer1.y);
     ctx.lineTo(outer0.x, outer0.y);
     ctx.closePath();
-    ctx.fillStyle = "rgba(255, 244, 224, 0.42)";
+    ctx.fillStyle = "rgba(255, 244, 224, 0.32)";
     ctx.fill();
     ctx.beginPath();
     ctx.moveTo(outer0.x, outer0.y);
     ctx.lineTo(outer1.x, outer1.y);
     ctx.strokeStyle = CREAM;
-    ctx.lineWidth = 10;
+    ctx.lineWidth = 5;
     ctx.shadowColor = CREAM;
-    ctx.shadowBlur = 14;
+    ctx.shadowBlur = 8;
     ctx.stroke();
     ctx.shadowBlur = 0;
   }
@@ -419,9 +410,9 @@
     var ca = Math.cos(playerAngle);
     var sa = Math.sin(playerAngle);
     ctx.beginPath();
-    ctx.moveTo(px + ca * 18, py + sa * 18);
-    ctx.lineTo(px - tx * 13 - ca * 9, py - ty * 13 - sa * 9);
-    ctx.lineTo(px + tx * 13 - ca * 9, py + ty * 13 - sa * 9);
+    ctx.moveTo(px + ca * 4, py + sa * 4);
+    ctx.lineTo(px - tx * 11 - ca * 14, py - ty * 11 - sa * 14);
+    ctx.lineTo(px + tx * 11 - ca * 14, py + ty * 11 - sa * 14);
     ctx.closePath();
     ctx.fillStyle = CREAM;
     ctx.shadowColor = CREAM;

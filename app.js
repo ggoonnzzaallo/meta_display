@@ -12,7 +12,7 @@
   var APPS = [
     { name: "Cadence", href: "apps/cadence/", version: "v8", updated: "2026-08-18T00:00:00Z", blurb: "Swipe matching arrows on the beat" },
     { name: "Apex", href: "apps/apex/", version: "v2", updated: "2026-08-17T23:58:53Z", blurb: "F1 lights out, then drive until you box" },
-    { name: "Gyre", href: "apps/gyre/", version: "v8", updated: "2026-08-18T15:10:00Z", blurb: "Cream face, green gap, red walls. Triangle first" },
+    { name: "Gyre", href: "apps/gyre/", version: "v9", updated: "2026-08-18T15:28:00Z", blurb: "Thin lines. Hold the cream face until they cross" },
     { name: "Stack", href: "apps/stack/", version: "v4", updated: "2026-08-17T19:51:41Z", blurb: "Pinch to drop and keep the width" },
     { name: "Well", href: "apps/well/", version: "v5", updated: "2026-08-17T20:41:31Z", blurb: "Tiny Tetris. Pinch hard-drops" },
     { name: "Merge", href: "apps/merge/", version: "v3", updated: "2026-08-18T15:15:00Z", blurb: "6×6 2048. Empty space fills faster" },
