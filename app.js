@@ -79,7 +79,7 @@
     return latest;
   }
 
-  function isNew(app, latestDay) {
+  function isLatest(app, latestDay) {
     return !!(app.updated && latestDay && pacificDay(app.updated) === latestDay);
   }
 
@@ -96,10 +96,10 @@
       name.className = "app-name";
       name.textContent = app.name;
       nameRow.appendChild(name);
-      if (isNew(app, latestDay)) {
+      if (isLatest(app, latestDay)) {
         var badge = document.createElement("span");
-        badge.className = "app-new";
-        badge.textContent = "*NEW*";
+        badge.className = "app-updated-badge";
+        badge.textContent = "Updated";
         nameRow.appendChild(badge);
       }
       var blurb = document.createElement("span");

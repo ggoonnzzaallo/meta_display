@@ -147,18 +147,18 @@ body {
   line-height: 1.1;
 }
 
-.app-new {
+.app-updated-badge {
   font-size: 16px;
   font-weight: 800;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.08em;
   color: #ff2a00;
   text-shadow:
     0 0 8px #ff6a00,
     0 0 16px rgba(255, 51, 0, 0.85);
-  animation: new-fire 1.15s ease-in-out infinite;
+  animation: updated-fire 1.15s ease-in-out infinite;
 }
 
-@keyframes new-fire {
+@keyframes updated-fire {
   0%,
   100% {
     color: #ff2200;
