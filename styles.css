@@ -52,10 +52,25 @@ body {
   flex-shrink: 0;
 }
 
+.header-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+}
+
+.logo {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border-radius: 10px;
+  display: block;
+}
+
 .header h1 {
   font-size: 24px;
   font-weight: 700;
-  flex: 1;
 }
 
 .header-meta {
