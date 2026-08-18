@@ -14,6 +14,7 @@
   var COVER_DIST = 26;
   var TICK_GAP = 16;
   var HUD_TOP = 56;
+  var PASS_PCT = 90;
 
   var canvas = document.getElementById("hud");
   var ctx = canvas.getContext("2d");
@@ -23,6 +24,7 @@
   var scoreTitle = document.getElementById("score-title");
   var scoreReadout = document.getElementById("score-readout");
   var scoreDetail = document.getElementById("score-detail");
+  var nextBtn = document.getElementById("next-btn");
 
   var TAP_PX = 28;
   var ACTION_MS = 400;
@@ -53,6 +55,7 @@
     best: loadBest(),
     claimed: [],
     claimedCount: 0,
+    lastPct: 0,
   };
 
   function loadBest() {
@@ -473,10 +476,17 @@
 
   function showScore() {
     var pct = tracedPct();
+    var pass = pct >= PASS_PCT;
+    state.lastPct = pct;
     state.overlay = "score";
-    scoreTitle.textContent = "TRACED";
+    scoreTitle.textContent = pass ? "TRACED" : "TRY AGAIN";
     scoreReadout.textContent = pct + "%";
-    if (scoreDetail) scoreDetail.textContent = "of the outline";
+    if (scoreDetail) {
+      scoreDetail.textContent = pass
+        ? "of the outline"
+        : "Need 90% or higher to proceed";
+    }
+    if (nextBtn) nextBtn.classList.toggle("hidden", !pass);
     pauseOverlay.classList.add("hidden");
     scoreOverlay.classList.remove("hidden");
     saveBest(pct);
@@ -676,6 +686,7 @@
       return;
     }
     if (action === "next") {
+      if (state.lastPct < PASS_PCT) return;
       state.figure = (state.figure + 1) % figures.length;
       startRound();
     }
