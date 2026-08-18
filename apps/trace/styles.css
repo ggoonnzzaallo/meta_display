@@ -170,6 +170,10 @@ body {
   background: rgba(0, 0, 0, 0.45);
 }
 
+.overlay.hidden {
+  display: none;
+}
+
 #next-btn.hidden {
   display: none;
 }
