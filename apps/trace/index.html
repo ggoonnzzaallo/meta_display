@@ -5,10 +5,10 @@
   <meta name="viewport" content="width=600, height=600, initial-scale=1.0, user-scalable=no">
   <meta name="description" content="Pinch and drag to trace an outline. Stay close for a higher score.">
   <meta name="mrbd-web-app-capable" content="yes">
-  <title>TRACE v1</title>
+  <title>TRACE v2</title>
   <link rel="icon" href="favicon.png" sizes="128x128" type="image/png">
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="styles.css?v=1">
+  <link rel="stylesheet" href="styles.css?v=2">
 </head>
 <body>
   <div id="app">
@@ -16,12 +16,12 @@
       <div class="title-block">
         <p class="title-tag">PINCH · DRAW</p>
         <h1>TRACE</h1>
-        <p class="best-readout">BUILD v1</p>
+        <p class="best-readout">BUILD v2</p>
         <p id="best-readout" class="best-readout">BEST --</p>
       </div>
       <div class="menu">
-        <button class="focusable" data-action="play">PLAY</button>
-        <button class="focusable" data-action="how">HOW</button>
+        <button class="focusable" type="button" data-action="play">PLAY</button>
+        <button class="focusable" type="button" data-action="how">HOW</button>
       </div>
     </section>
 
@@ -35,7 +35,7 @@
           <li>Stay on the outline. Green is close, red is off. Release to score.</li>
           <li>Closer and more complete traces score higher. Back pauses.</li>
         </ul>
-        <button class="focusable" data-action="home">BACK</button>
+        <button class="focusable" type="button" data-action="home">BACK</button>
       </div>
     </section>
 
@@ -44,21 +44,21 @@
       <div id="pause-overlay" class="overlay hidden">
         <div class="panel">
           <h2>PAUSED</h2>
-          <button class="focusable" data-action="resume">RESUME</button>
-          <button class="focusable" data-action="quit">QUIT</button>
+          <button class="focusable" type="button" data-action="resume">RESUME</button>
+          <button class="focusable" type="button" data-action="quit">QUIT</button>
         </div>
       </div>
       <div id="score-overlay" class="overlay hidden">
         <div class="panel">
           <h2 id="score-title">CLOSE</h2>
           <p id="score-readout" class="score-readout">87</p>
-          <button class="focusable" data-action="next">NEXT</button>
-          <button class="focusable" data-action="retry">RETRY</button>
-          <button class="focusable" data-action="quit">QUIT</button>
+          <button class="focusable" type="button" data-action="next">NEXT</button>
+          <button class="focusable" type="button" data-action="retry">RETRY</button>
+          <button class="focusable" type="button" data-action="quit">QUIT</button>
         </div>
       </div>
     </section>
   </div>
-  <script src="app.js?v=1"></script>
+  <script src="app.js?v=2"></script>
 </body>
 </html>

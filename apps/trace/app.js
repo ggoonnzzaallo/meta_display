@@ -24,6 +24,20 @@
   var scoreTitle = document.getElementById("score-title");
   var scoreReadout = document.getElementById("score-readout");
 
+  var TAP_PX = 28;
+  var ACTION_MS = 400;
+  var lastFocusable = null;
+  var lastActionAt = 0;
+  var lastActionName = "";
+  var suppressSelectUntil = 0;
+  var tap = {
+    active: false,
+    drawing: false,
+    x: 0,
+    y: 0,
+    moved: false,
+  };
+
   var screens = {};
   var currentScreen = "home";
   var rafId = 0;
@@ -75,6 +89,41 @@
 
   function clamp(n, lo, hi) {
     return Math.max(lo, Math.min(hi, n));
+  }
+
+  function isFocusable(el) {
+    return !!(
+      el &&
+      el.classList &&
+      el.classList.contains("focusable") &&
+      !el.disabled &&
+      !el.classList.contains("hidden") &&
+      el.offsetParent !== null
+    );
+  }
+
+  function focusedControl() {
+    if (isFocusable(document.activeElement)) return document.activeElement;
+    if (isFocusable(lastFocusable)) return lastFocusable;
+    if (state.overlay === "score") {
+      return scoreOverlay.querySelector(".focusable:not([disabled]):not(.hidden)");
+    }
+    if (state.overlay === "pause") {
+      return pauseOverlay.querySelector(".focusable:not([disabled]):not(.hidden)");
+    }
+    var container = screens[currentScreen];
+    return container
+      ? container.querySelector(".focusable:not([disabled]):not(.hidden)")
+      : null;
+  }
+
+  function activateControl(el) {
+    if (!isFocusable(el)) return false;
+    var action = el.getAttribute("data-action");
+    if (!action) return false;
+    el.focus();
+    handleAction(action);
+    return true;
   }
 
   function collectScreens() {
@@ -422,6 +471,7 @@
     if (!state.drawing) return;
     state.drawing = false;
     state.lastPtr = null;
+    suppressSelectUntil = Date.now() + ACTION_MS;
     showScore(scoreStroke());
   }
 
@@ -555,6 +605,10 @@
   }
 
   function handleAction(action) {
+    var now = Date.now();
+    if (action === lastActionName && now - lastActionAt < ACTION_MS) return;
+    lastActionName = action;
+    lastActionAt = now;
     if (action === "play") {
       state.figure = 0;
       startRound();
@@ -587,51 +641,71 @@
     }
   }
 
-  function pointerOnChrome(event) {
-    return !!(
-      event.target &&
-      event.target.closest &&
-      (event.target.closest(".overlay") || event.target.closest(".focusable"))
-    );
+  function hitFocusable(event) {
+    return event.target && event.target.closest
+      ? event.target.closest(".focusable")
+      : null;
   }
+
+  function canDraw() {
+    return currentScreen === "play" && !state.overlay;
+  }
+
+  document.addEventListener("focusin", function (event) {
+    if (isFocusable(event.target)) lastFocusable = event.target;
+  });
 
   document.addEventListener(
     "pointerdown",
     function (event) {
-      if (currentScreen !== "play" || state.overlay || pointerOnChrome(event)) {
-        return;
-      }
       event.preventDefault();
-      beginStroke(event);
+      tap.active = true;
+      tap.drawing = false;
+      tap.moved = false;
+      tap.x = event.clientX;
+      tap.y = event.clientY;
+      if (canDraw()) {
+        tap.drawing = true;
+        beginStroke(event);
+      }
     },
     { passive: false }
   );
   document.addEventListener(
     "pointermove",
     function (event) {
-      if (!state.drawing) return;
+      if (!tap.active && !state.drawing) return;
       event.preventDefault();
-      moveStroke(event);
+      if (
+        Math.hypot(event.clientX - tap.x, event.clientY - tap.y) > TAP_PX
+      ) {
+        tap.moved = true;
+      }
+      if (state.drawing) moveStroke(event);
     },
     { passive: false }
   );
   document.addEventListener(
     "pointerup",
     function (event) {
-      if (!state.drawing) return;
       event.preventDefault();
-      endStroke();
+      var wasDrawing = state.drawing || tap.drawing;
+      var moved = tap.moved;
+      tap.active = false;
+      tap.drawing = false;
+      if (wasDrawing) {
+        endStroke();
+        return;
+      }
+      if (moved) return;
+      activateControl(hitFocusable(event) || focusedControl());
     },
     { passive: false }
   );
   document.addEventListener("pointercancel", function () {
+    tap.active = false;
+    tap.drawing = false;
     if (state.drawing) endStroke();
-  });
-
-  document.addEventListener("click", function (event) {
-    var btn = event.target.closest("[data-action]");
-    if (!btn) return;
-    handleAction(btn.getAttribute("data-action"));
   });
 
   document.addEventListener("keydown", function (event) {
@@ -672,12 +746,8 @@
         moveFocus("right");
         break;
       case DPAD.SELECT:
-        if (
-          document.activeElement &&
-          document.activeElement.classList.contains("focusable")
-        ) {
-          document.activeElement.click();
-        }
+        if (Date.now() < suppressSelectUntil) break;
+        activateControl(focusedControl());
         break;
       default:
         return;
