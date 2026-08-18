@@ -10,7 +10,7 @@
   };
 
   var APPS = [
-    { name: "Trace", href: "apps/trace/", version: "v2", updated: "2026-08-18T19:44:00Z", blurb: "Pinch-drag and stay on the outline" },
+    { name: "Trace", href: "apps/trace/", version: "v3", updated: "2026-08-18T20:10:00Z", blurb: "Pinch-drag and stay on the outline" },
     { name: "Cadence", href: "apps/cadence/", version: "v8", updated: "2026-08-18T00:00:00Z", blurb: "Swipe matching arrows on the beat" },
     { name: "Apex", href: "apps/apex/", version: "v2", updated: "2026-08-17T23:58:53Z", blurb: "F1 lights out, then drive until you box" },
     { name: "Gyre", href: "apps/gyre/", version: "v13", updated: "2026-08-18T16:15:00Z", blurb: "Seven sides is not the end. Heat, then 8 and 9" },

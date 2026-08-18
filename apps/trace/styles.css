@@ -193,7 +193,7 @@ body {
 }
 
 .score-readout {
-  min-height: 72px;
+  min-height: 56px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -201,4 +201,13 @@ body {
   font-weight: 700;
   letter-spacing: 0.08em;
   color: #ffffff;
+}
+
+.score-detail {
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--text-secondary);
+  text-align: center;
+  margin-top: -4px;
 }

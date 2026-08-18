@@ -11,7 +11,6 @@
   };
 
   var STORAGE_BEST = "trace_v1_best";
-  var MAX_DIST = 40;
   var COVER_DIST = 26;
   var TICK_GAP = 16;
   var HUD_TOP = 56;
@@ -23,6 +22,7 @@
   var scoreOverlay = document.getElementById("score-overlay");
   var scoreTitle = document.getElementById("score-title");
   var scoreReadout = document.getElementById("score-readout");
+  var scoreDetail = document.getElementById("score-detail");
 
   var TAP_PX = 28;
   var ACTION_MS = 400;
@@ -80,11 +80,8 @@
   }
 
   function renderBest() {
-    bestEl.textContent = state.best < 0 ? "BEST --" : "BEST " + pad3(state.best);
-  }
-
-  function pad3(n) {
-    return String(Math.round(n)).padStart(3, "0");
+    bestEl.textContent =
+      state.best < 0 ? "BEST --" : "BEST " + state.best + "%";
   }
 
   function clamp(n, lo, hi) {
@@ -205,6 +202,20 @@
     return densify(pts, closed, TICK_GAP);
   }
 
+  function polylineLen(pts, closed) {
+    var n = pts.length;
+    if (n < 2) return 0;
+    var segs = closed ? n : n - 1;
+    var len = 0;
+    var i;
+    for (i = 0; i < segs; i++) {
+      var a = pts[i];
+      var b = pts[(i + 1) % n];
+      len += Math.hypot(b.x - a.x, b.y - a.y);
+    }
+    return len;
+  }
+
   function makeFigure(name, pts, closed) {
     var path = densify(pts, closed, 4);
     return {
@@ -213,6 +224,7 @@
       path: path,
       ticks: ticksFrom(path, closed),
       start: path[0],
+      length: polylineLen(path, closed),
     };
   }
 
@@ -299,11 +311,12 @@
     var cx = 300;
     var cy = 318;
     return [
-      makeFigure("CIRCLE", ellipse(cx, cy, 168, 168, 48), true),
-      makeFigure("SQUARE", poly(4, cx, cy, 168, Math.PI / 4), true),
+      makeFigure("LINE", [{ x: 90, y: 320 }, { x: 510, y: 320 }], false),
       makeFigure("TRIANGLE", poly(3, cx, cy + 18, 186, -Math.PI / 2), true),
-      makeFigure("HEART", heart(cx, cy + 8, 11.2), true),
+      makeFigure("SQUARE", poly(4, cx, cy, 168, Math.PI / 4), true),
       makeFigure("HOUSE", house(cx, cy + 8, 280, 260), true),
+      makeFigure("CIRCLE", ellipse(cx, cy, 168, 168, 48), true),
+      makeFigure("HEART", heart(cx, cy + 8, 11.2), true),
       makeFigure("STAR", star(cx, cy, 176, 78, 5), true),
       makeFigure("LOOP", infinity(cx, cy, 190, 110), true),
     ];
@@ -343,24 +356,43 @@
     return "#ff4466";
   }
 
+  function skillLabel(pct) {
+    if (pct >= 96) return "ARTIST";
+    if (pct >= 88) return "ADULT";
+    if (pct >= 75) return "12-YEAR-OLD";
+    if (pct >= 62) return "10-YEAR-OLD";
+    if (pct >= 48) return "8-YEAR-OLD";
+    if (pct >= 34) return "6-YEAR-OLD";
+    if (pct >= 18) return "4-YEAR-OLD";
+    return "TODDLER";
+  }
+
   function scoreStroke() {
     var fig = currentFigure();
     var stroke = state.stroke;
     if (stroke.length < 6) {
-      return { score: 0, accuracy: 0, coverage: 0, grade: "MISS" };
+      return { score: 0, coverage: 0, onPath: 0, grade: "TODDLER" };
     }
-    var sum = 0;
+    var onPath = 0;
+    var inkLen = 0;
     var i;
     for (i = 0; i < stroke.length; i++) {
-      sum += Math.min(1, distToPath(stroke[i], fig) / MAX_DIST);
+      if (distToPath(stroke[i], fig) <= COVER_DIST) onPath += 1;
+      if (i > 0) {
+        inkLen += Math.hypot(
+          stroke[i].x - stroke[i - 1].x,
+          stroke[i].y - stroke[i - 1].y
+        );
+      }
     }
-    var accuracy = 1 - sum / stroke.length;
+    var onPathFrac = onPath / stroke.length;
     var ticks = fig.ticks;
     var hit = 0;
     for (i = 0; i < ticks.length; i++) {
       var t = ticks[i];
       var j;
       for (j = 0; j < stroke.length; j++) {
+        if (distToPath(stroke[j], fig) > COVER_DIST) continue;
         if (Math.hypot(stroke[j].x - t.x, stroke[j].y - t.y) <= COVER_DIST) {
           hit += 1;
           break;
@@ -368,13 +400,18 @@
       }
     }
     var coverage = ticks.length ? hit / ticks.length : 0;
-    var score = Math.round(100 * (0.5 * accuracy + 0.5 * coverage));
-    if (coverage < 0.18) score = Math.min(score, 24);
-    var grade = "MISS";
-    if (score >= 90) grade = "PERFECT";
-    else if (score >= 75) grade = "CLOSE";
-    else if (score >= 50) grade = "OK";
-    return { score: score, accuracy: accuracy, coverage: coverage, grade: grade };
+    var pathLen = Math.max(1, fig.length);
+    var efficiency = 1;
+    if (inkLen > pathLen * 1.6) efficiency = (pathLen * 1.6) / inkLen;
+    var traced = coverage * onPathFrac * efficiency;
+    var score = Math.round(100 * traced);
+    if (onPathFrac < 0.2) score = Math.min(score, 16);
+    return {
+      score: score,
+      coverage: coverage,
+      onPath: onPathFrac,
+      grade: skillLabel(score),
+    };
   }
 
   function resetStroke() {
@@ -413,7 +450,10 @@
     state.result = result;
     state.overlay = "score";
     scoreTitle.textContent = result.grade;
-    scoreReadout.textContent = pad3(result.score);
+    scoreReadout.textContent = result.score + "%";
+    if (scoreDetail) {
+      scoreDetail.textContent = "of the outline traced";
+    }
     pauseOverlay.classList.add("hidden");
     scoreOverlay.classList.remove("hidden");
     saveBest(result.score);
@@ -578,8 +618,10 @@
     ctx.fillText(state.figure + 1 + " / " + figures.length, 580, 36);
 
     var hint = "PINCH AND DRAG";
-    if (state.drawing && state.live) hint = pad3(state.live.score);
-    if (state.overlay === "score" && state.result) hint = pad3(state.result.score);
+    if (state.drawing && state.live) hint = state.live.score + "% TRACED";
+    if (state.overlay === "score" && state.result) {
+      hint = state.result.score + "% TRACED";
+    }
     ctx.textAlign = "center";
     ctx.fillStyle = "#e4e6eb";
     ctx.font = "700 18px ui-monospace, SF Mono, Menlo, monospace";
