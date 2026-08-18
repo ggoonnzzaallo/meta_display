@@ -20,7 +20,7 @@
     { name: "Trio", href: "apps/trio/", version: "v1", updated: "2026-08-16T17:53:18Z", blurb: "Threes-style slider. One step per swipe" },
     { name: "Court", href: "apps/court/", version: "v2", updated: "2026-08-17T19:51:41Z", blurb: "Left or right decrees. Keep four meters" },
     { name: "Skim", href: "apps/skim/", version: "v3", updated: "2026-08-17T20:42:40Z", blurb: "Canyon racer. Tap altitude, pinch boost" },
-    { name: "Situation", href: "apps/situation/", version: "v1", updated: "2026-08-15T01:54:23Z", blurb: "Live headlines from Monitor the Situation" },
+    { name: "Situation", href: "apps/situation/", version: "v2", updated: "2026-08-18T18:58:00Z", blurb: "Unofficial. Headlines from monitor-the-situation.com" },
     { name: "Markets", href: "apps/markets/", version: "v1", updated: "2026-08-15T01:54:23Z", blurb: "Movers, earnings, and market headlines" },
     { name: "Lock On", href: "apps/lockon/", version: "v30", updated: "2026-08-15T18:51:30Z", blurb: "Head-aim HUD. Bring targets to the pipper" },
     { name: "Strike", href: "apps/strike/", version: "v1", updated: "2026-08-15T02:44:47Z", blurb: "Head-aim shooting gallery" },

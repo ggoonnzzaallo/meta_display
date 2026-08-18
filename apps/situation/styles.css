@@ -55,6 +55,16 @@ body {
   gap: 4px;
 }
 
+.source-credit {
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.25;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .header-title-row {
   display: flex;
   align-items: center;
@@ -281,4 +291,9 @@ body {
   font-size: 20px;
   line-height: 1.35;
   color: var(--text-secondary);
+}
+
+.detail-card .source-credit {
+  margin-top: 16px;
+  white-space: normal;
 }
