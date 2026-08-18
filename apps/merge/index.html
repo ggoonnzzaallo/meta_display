@@ -5,10 +5,10 @@
   <meta name="viewport" content="width=600, height=600, initial-scale=1.0, user-scalable=no">
   <meta name="description" content="6x6 2048: swipe to slide large tiles and merge them. A long learning-curve puzzle.">
   <meta name="mrbd-web-app-capable" content="yes">
-  <title>MERGE v2</title>
+  <title>MERGE v3</title>
   <link rel="icon" href="favicon.png" sizes="128x128" type="image/png">
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="styles.css?v=2">
+  <link rel="stylesheet" href="styles.css?v=3">
 </head>
 <body>
   <div id="app">
@@ -16,7 +16,7 @@
       <div class="title-block">
         <p class="title-tag">6×6 · 2048</p>
         <h1>MERGE</h1>
-        <p class="best-readout">BUILD v2</p>
+        <p class="best-readout">BUILD v3</p>
         <p id="best-readout" class="best-readout">BEST 00000</p>
       </div>
       <div class="menu">
@@ -32,7 +32,7 @@
       <div class="content">
         <ul class="facts">
           <li>Swipe to slide. Matching numbers merge. Two new tiles appear after each move.</li>
-          <li>Wait too long and another tile lands on its own.</li>
+          <li>Idle tiles land faster when the board is empty, slower when it is packed. Higher scores speed that up.</li>
           <li>Pinch undoes a move. Keep going — there is no 2048 cap. Back pauses.</li>
         </ul>
         <button class="focusable" data-action="home">BACK</button>
@@ -62,6 +62,6 @@
       </div>
     </section>
   </div>
-  <script src="app.js?v=2"></script>
+  <script src="app.js?v=3"></script>
 </body>
 </html>

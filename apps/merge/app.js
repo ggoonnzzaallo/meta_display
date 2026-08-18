@@ -18,7 +18,8 @@
   var OY = 86;
   var UNDOS = 5;
   var BEST_KEY = "merge-best";
-  var IDLE_SPAWN = 4.2;
+  var SPAWN_FAST = 0.9;
+  var SPAWN_SLOW = 3.2;
   var HINT_T = 3.2;
   var CREAM = "#FFFFFF";
   var MUTED = "#B0B3B8";
@@ -194,6 +195,17 @@
     for (i = 0; i < n; i += 1) spawn();
   }
 
+  function spawnInterval() {
+    var open = empties().length / (GRID * GRID);
+    var gap = SPAWN_SLOW - (SPAWN_SLOW - SPAWN_FAST) * open;
+    var scoreMul = Math.max(0.48, 1 / (1 + score / 4500));
+    return Math.max(0.5, gap * scoreMul);
+  }
+
+  function idleSpawnCount() {
+    return empties().length >= 18 ? 2 : 1;
+  }
+
   function slideLine(values, reverse) {
     var vals = values.filter(function (v) {
       return v;
@@ -273,7 +285,7 @@
     board = result.board;
     score += result.gained;
     spawnN(2);
-    spawnT = IDLE_SPAWN;
+    spawnT = spawnInterval();
     draw();
     if (!canMove()) endRun();
   }
@@ -295,10 +307,10 @@
     undos = UNDOS;
     history = [];
     hintT = HINT_T;
-    spawnT = IDLE_SPAWN;
     lastTs = 0;
     spawn();
     spawn();
+    spawnT = spawnInterval();
     pauseOverlay.classList.add("hidden");
     navigateTo("play");
     loop();
@@ -403,8 +415,8 @@
     if (hintT > 0) hintT -= dt;
     spawnT -= dt;
     if (spawnT <= 0) {
-      spawn();
-      spawnT = IDLE_SPAWN;
+      spawnN(idleSpawnCount());
+      spawnT = spawnInterval();
       if (!canMove()) {
         draw();
         endRun();

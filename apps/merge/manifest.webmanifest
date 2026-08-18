@@ -1,7 +1,7 @@
 {
   "name": "MERGE",
   "short_name": "Merge",
-  "description": "6x6 2048: swipe to slide large tiles and merge them.",
+  "description": "6x6 2048: swipe to merge. Empty space fills faster.",
   "icons": [
     { "src": "favicon.png", "sizes": "128x128", "type": "image/png" }
   ],
