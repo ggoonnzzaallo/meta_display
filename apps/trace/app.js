@@ -40,6 +40,11 @@
     moved: false,
   };
   var audioCtx = null;
+  var traceOnOsc = null;
+  var traceOffOsc = null;
+  var traceOnGain = null;
+  var traceOffGain = null;
+  var traceOnPath = null;
 
   var screens = {};
   var currentScreen = "home";
@@ -368,6 +373,86 @@
     beep(130, 0.16, "triangle", 0.045, 0.13);
   }
 
+  function onOutline(pt, fig) {
+    var ticks = fig.ticks;
+    var i;
+    for (i = 0; i < ticks.length; i++) {
+      if (Math.hypot(pt.x - ticks[i].x, pt.y - ticks[i].y) <= COVER_DIST) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  function startVoice(ctx, freq, type) {
+    var osc = ctx.createOscillator();
+    var gain = ctx.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, ctx.currentTime);
+    gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(ctx.currentTime);
+    return { osc: osc, gain: gain };
+  }
+
+  function fadeGain(gain, vol, dur) {
+    if (!gain || !audioCtx) return;
+    var t = audioCtx.currentTime;
+    gain.gain.cancelScheduledValues(t);
+    gain.gain.setValueAtTime(Math.max(0.0001, gain.gain.value), t);
+    gain.gain.exponentialRampToValueAtTime(Math.max(0.0001, vol), t + dur);
+  }
+
+  function startTraceTone() {
+    var ctx = ensureAudio();
+    if (!ctx) return;
+    stopTraceTone();
+    var on = startVoice(ctx, 660, "sine");
+    var off = startVoice(ctx, 280, "triangle");
+    traceOnOsc = on.osc;
+    traceOnGain = on.gain;
+    traceOffOsc = off.osc;
+    traceOffGain = off.gain;
+    fadeGain(traceOnGain, 0.016, 0.05);
+    traceOnPath = true;
+  }
+
+  function setTraceTone(onPath) {
+    if (!traceOnGain || !traceOffGain) return;
+    if (traceOnPath === onPath) return;
+    traceOnPath = onPath;
+    fadeGain(traceOnGain, onPath ? 0.016 : 0.0001, 0.07);
+    fadeGain(traceOffGain, onPath ? 0.0001 : 0.014, 0.07);
+  }
+
+  function stopTraceTone() {
+    if (!traceOnOsc && !traceOffOsc) {
+      traceOnPath = null;
+      return;
+    }
+    fadeGain(traceOnGain, 0.0001, 0.03);
+    fadeGain(traceOffGain, 0.0001, 0.03);
+    if (audioCtx) {
+      var t = audioCtx.currentTime + 0.05;
+      try {
+        if (traceOnOsc) traceOnOsc.stop(t);
+      } catch (err) {
+        /* ignore */
+      }
+      try {
+        if (traceOffOsc) traceOffOsc.stop(t);
+      } catch (err) {
+        /* ignore */
+      }
+    }
+    traceOnOsc = null;
+    traceOffOsc = null;
+    traceOnGain = null;
+    traceOffGain = null;
+    traceOnPath = null;
+  }
+
   function tree() {
     return [
       { x: 300, y: 86 },
@@ -506,6 +591,7 @@
 
   function resetStroke() {
     var fig = currentFigure();
+    stopTraceTone();
     state.drawing = false;
     state.stroke = [];
     state.claimed = [];
@@ -528,6 +614,7 @@
 
   function showPause() {
     if (currentScreen !== "play" || state.overlay === "score") return;
+    stopTraceTone();
     state.drawing = false;
     state.overlay = "pause";
     pauseOverlay.classList.remove("hidden");
@@ -573,6 +660,7 @@
         /* ignore */
       }
     }
+    startTraceTone();
   }
 
   function moveStroke(event) {
@@ -587,6 +675,7 @@
     if (gap < 1.5) {
       state.pencil.x = x;
       state.pencil.y = y;
+      setTraceTone(onOutline(state.pencil, currentFigure()));
       return;
     }
     var steps = Math.max(1, Math.round(gap / 8));
@@ -599,10 +688,12 @@
     }
     state.pencil.x = x;
     state.pencil.y = y;
+    setTraceTone(onOutline(state.pencil, currentFigure()));
   }
 
   function endStroke() {
     if (!state.drawing) return;
+    stopTraceTone();
     state.drawing = false;
     state.lastPtr = null;
     suppressSelectUntil = Date.now() + ACTION_MS;
