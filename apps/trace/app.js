@@ -54,6 +54,10 @@
     result: null,
     overlay: "",
     best: loadBest(),
+    claimed: [],
+    claimedCount: 0,
+    onPathCount: 0,
+    inkLen: 0,
   };
 
   function loadBest() {
@@ -326,25 +330,12 @@
     return figures[state.figure % figures.length];
   }
 
-  function distToSeg(p, a, b) {
-    var abx = b.x - a.x;
-    var aby = b.y - a.y;
-    var len2 = abx * abx + aby * aby;
-    var t = len2 ? ((p.x - a.x) * abx + (p.y - a.y) * aby) / len2 : 0;
-    t = clamp(t, 0, 1);
-    var qx = a.x + abx * t;
-    var qy = a.y + aby * t;
-    return Math.hypot(p.x - qx, p.y - qy);
-  }
-
   function distToPath(p, fig) {
-    var pts = fig.path;
-    var n = pts.length;
-    var segs = fig.closed ? n : n - 1;
+    var ticks = fig.ticks;
     var best = Infinity;
     var i;
-    for (i = 0; i < segs; i++) {
-      var d = distToSeg(p, pts[i], pts[(i + 1) % n]);
+    for (i = 0; i < ticks.length; i++) {
+      var d = Math.hypot(p.x - ticks[i].x, p.y - ticks[i].y);
       if (d < best) best = d;
     }
     return best;
@@ -367,44 +358,18 @@
     return "TODDLER";
   }
 
-  function scoreStroke() {
+  function liveScore() {
     var fig = currentFigure();
-    var stroke = state.stroke;
-    if (stroke.length < 6) {
+    var n = state.stroke.length;
+    if (n < 6) {
       return { score: 0, coverage: 0, onPath: 0, grade: "TODDLER" };
     }
-    var onPath = 0;
-    var inkLen = 0;
-    var i;
-    for (i = 0; i < stroke.length; i++) {
-      if (distToPath(stroke[i], fig) <= COVER_DIST) onPath += 1;
-      if (i > 0) {
-        inkLen += Math.hypot(
-          stroke[i].x - stroke[i - 1].x,
-          stroke[i].y - stroke[i - 1].y
-        );
-      }
-    }
-    var onPathFrac = onPath / stroke.length;
-    var ticks = fig.ticks;
-    var hit = 0;
-    for (i = 0; i < ticks.length; i++) {
-      var t = ticks[i];
-      var j;
-      for (j = 0; j < stroke.length; j++) {
-        if (distToPath(stroke[j], fig) > COVER_DIST) continue;
-        if (Math.hypot(stroke[j].x - t.x, stroke[j].y - t.y) <= COVER_DIST) {
-          hit += 1;
-          break;
-        }
-      }
-    }
-    var coverage = ticks.length ? hit / ticks.length : 0;
+    var onPathFrac = state.onPathCount / n;
+    var coverage = fig.ticks.length ? state.claimedCount / fig.ticks.length : 0;
     var pathLen = Math.max(1, fig.length);
     var efficiency = 1;
-    if (inkLen > pathLen * 1.6) efficiency = (pathLen * 1.6) / inkLen;
-    var traced = coverage * onPathFrac * efficiency;
-    var score = Math.round(100 * traced);
+    if (state.inkLen > pathLen * 1.6) efficiency = (pathLen * 1.6) / state.inkLen;
+    var score = Math.round(100 * coverage * onPathFrac * efficiency);
     if (onPathFrac < 0.2) score = Math.min(score, 16);
     return {
       score: score,
@@ -414,11 +379,43 @@
     };
   }
 
+  function claimTicks(pt, fig) {
+    var ticks = fig.ticks;
+    var i;
+    for (i = 0; i < ticks.length; i++) {
+      if (state.claimed[i]) continue;
+      if (Math.hypot(pt.x - ticks[i].x, pt.y - ticks[i].y) <= COVER_DIST) {
+        state.claimed[i] = 1;
+        state.claimedCount += 1;
+      }
+    }
+  }
+
+  function addStrokePoint(pt) {
+    var fig = currentFigure();
+    var last = state.stroke[state.stroke.length - 1];
+    if (last) {
+      state.inkLen += Math.hypot(pt.x - last.x, pt.y - last.y);
+    }
+    var dist = distToPath(pt, fig);
+    state.stroke.push(pt);
+    state.colors.push(inkColor(dist));
+    if (dist <= COVER_DIST) {
+      state.onPathCount += 1;
+      claimTicks(pt, fig);
+    }
+    state.live = liveScore();
+  }
+
   function resetStroke() {
     var fig = currentFigure();
     state.drawing = false;
     state.stroke = [];
     state.colors = [];
+    state.claimed = [];
+    state.claimedCount = 0;
+    state.onPathCount = 0;
+    state.inkLen = 0;
     state.pencil = { x: fig.start.x, y: fig.start.y };
     state.lastPtr = null;
     state.live = null;
@@ -464,11 +461,15 @@
     if (currentScreen !== "play" || state.overlay) return;
     var fig = currentFigure();
     state.drawing = true;
-    state.stroke = [{ x: fig.start.x, y: fig.start.y }];
-    state.colors = [inkColor(0)];
+    state.stroke = [];
+    state.colors = [];
+    state.claimed = [];
+    state.claimedCount = 0;
+    state.onPathCount = 0;
+    state.inkLen = 0;
+    addStrokePoint({ x: fig.start.x, y: fig.start.y });
     state.pencil = { x: fig.start.x, y: fig.start.y };
     state.lastPtr = { x: event.clientX, y: event.clientY };
-    state.live = { score: 100, accuracy: 1, coverage: 0, grade: "" };
     if (canvas.setPointerCapture) {
       try {
         canvas.setPointerCapture(event.pointerId);
@@ -498,13 +499,10 @@
       var t = s / steps;
       var px = last.x + (x - last.x) * t;
       var py = last.y + (y - last.y) * t;
-      var pt = { x: px, y: py };
-      state.stroke.push(pt);
-      state.colors.push(inkColor(distToPath(pt, currentFigure())));
+      addStrokePoint({ x: px, y: py });
     }
     state.pencil.x = x;
     state.pencil.y = y;
-    state.live = scoreStroke();
   }
 
   function endStroke() {
@@ -512,7 +510,7 @@
     state.drawing = false;
     state.lastPtr = null;
     suppressSelectUntil = Date.now() + ACTION_MS;
-    showScore(scoreStroke());
+    showScore(liveScore());
   }
 
   function drawPath(pts, closed) {
@@ -540,39 +538,34 @@
     ctx.lineWidth = 6;
     drawPath(fig.path, fig.closed);
 
-    var claimed = {};
-    if (state.stroke.length) {
-      var i;
-      for (i = 0; i < fig.ticks.length; i++) {
-        var tick = fig.ticks[i];
-        var j;
-        for (j = 0; j < state.stroke.length; j++) {
-          if (
-            Math.hypot(state.stroke[j].x - tick.x, state.stroke[j].y - tick.y) <=
-            COVER_DIST
-          ) {
-            claimed[i] = true;
-            break;
-          }
-        }
-      }
-    }
     var k;
     for (k = 0; k < fig.ticks.length; k++) {
       ctx.beginPath();
-      ctx.fillStyle = claimed[k] ? "#00ff88" : "#5c6168";
-      ctx.arc(fig.ticks[k].x, fig.ticks[k].y, claimed[k] ? 3.5 : 2.4, 0, Math.PI * 2);
+      ctx.fillStyle = state.claimed[k] ? "#00ff88" : "#5c6168";
+      ctx.arc(
+        fig.ticks[k].x,
+        fig.ticks[k].y,
+        state.claimed[k] ? 3.5 : 2.4,
+        0,
+        Math.PI * 2
+      );
       ctx.fill();
     }
 
     if (state.stroke.length > 1) {
-      var s;
-      for (s = 1; s < state.stroke.length; s++) {
+      ctx.lineWidth = 8;
+      var s = 1;
+      while (s < state.stroke.length) {
+        var color = state.colors[s] || "#ffffff";
         ctx.beginPath();
-        ctx.strokeStyle = state.colors[s] || "#ffffff";
-        ctx.lineWidth = 8;
+        ctx.strokeStyle = color;
         ctx.moveTo(state.stroke[s - 1].x, state.stroke[s - 1].y);
         ctx.lineTo(state.stroke[s].x, state.stroke[s].y);
+        s += 1;
+        while (s < state.stroke.length && (state.colors[s] || "#ffffff") === color) {
+          ctx.lineTo(state.stroke[s].x, state.stroke[s].y);
+          s += 1;
+        }
         ctx.stroke();
       }
     }
