@@ -39,6 +39,7 @@
     y: 0,
     moved: false,
   };
+  var audioCtx = null;
 
   var screens = {};
   var currentScreen = "home";
@@ -322,12 +323,72 @@
     return pts;
   }
 
-  function bolt() {
+  function ensureAudio() {
+    var AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return null;
+    if (!audioCtx) audioCtx = new AC();
+    if (audioCtx.state === "suspended") audioCtx.resume();
+    return audioCtx;
+  }
+
+  function beep(freq, dur, type, vol, delay, slideTo) {
+    var ctx = ensureAudio();
+    if (!ctx) return;
+    var t = ctx.currentTime + (delay || 0);
+    var osc = ctx.createOscillator();
+    var gain = ctx.createGain();
+    osc.type = type || "sine";
+    osc.frequency.setValueAtTime(Math.max(40, freq), t);
+    if (slideTo) {
+      osc.frequency.exponentialRampToValueAtTime(
+        Math.max(40, slideTo),
+        t + dur
+      );
+    }
+    gain.gain.setValueAtTime(0.0001, t);
+    gain.gain.exponentialRampToValueAtTime(Math.max(0.0002, vol), t + 0.012);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(t);
+    osc.stop(t + dur + 0.02);
+  }
+
+  function sfxRelease() {
+    beep(680, 0.05, "triangle", 0.045);
+  }
+
+  function sfxPass() {
+    beep(523, 0.09, "sine", 0.07, 0.04);
+    beep(784, 0.16, "sine", 0.08, 0.13);
+  }
+
+  function sfxFail() {
+    beep(196, 0.1, "square", 0.04, 0.04, 150);
+    beep(130, 0.16, "triangle", 0.045, 0.13);
+  }
+
+  function tree() {
     return [
-      { x: 360, y: 140 },
-      { x: 230, y: 310 },
-      { x: 320, y: 310 },
-      { x: 230, y: 500 },
+      { x: 300, y: 86 },
+      { x: 244, y: 164 },
+      { x: 270, y: 164 },
+      { x: 202, y: 248 },
+      { x: 234, y: 248 },
+      { x: 160, y: 340 },
+      { x: 200, y: 340 },
+      { x: 118, y: 444 },
+      { x: 248, y: 444 },
+      { x: 248, y: 516 },
+      { x: 352, y: 516 },
+      { x: 352, y: 444 },
+      { x: 482, y: 444 },
+      { x: 400, y: 340 },
+      { x: 440, y: 340 },
+      { x: 366, y: 248 },
+      { x: 398, y: 248 },
+      { x: 330, y: 164 },
+      { x: 356, y: 164 },
     ];
   }
 
@@ -410,8 +471,8 @@
       makeFigure("HEART", heart(cx, cy + 8, 11.2), true),
       makeFigure("MOON", moon(cx - 10, cy, 170), true),
       makeFigure("STAR", star(cx, cy, 176, 78, 5), true),
-      makeFigure("BOLT", bolt(), false),
       makeFigure("SPIRAL", spiral(cx, cy, 22, 168, 2.2), false),
+      makeFigure("TREE", tree(), true),
       makeFigure("META", metaMark(cx, cy, 148), true),
     ];
   }
@@ -491,6 +552,8 @@
     scoreOverlay.classList.remove("hidden");
     saveBest(pct);
     focusFirst(scoreOverlay);
+    if (pass) sfxPass();
+    else sfxFail();
   }
 
   function beginStroke(event) {
@@ -543,6 +606,7 @@
     state.drawing = false;
     state.lastPtr = null;
     suppressSelectUntil = Date.now() + ACTION_MS;
+    sfxRelease();
     showScore();
   }
 
@@ -660,6 +724,7 @@
     lastActionName = action;
     lastActionAt = now;
     if (action === "play") {
+      ensureAudio();
       state.figure = 0;
       startRound();
       return;
@@ -710,6 +775,7 @@
     "pointerdown",
     function (event) {
       event.preventDefault();
+      ensureAudio();
       tap.active = true;
       tap.drawing = false;
       tap.moved = false;
