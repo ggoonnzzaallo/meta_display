@@ -20,7 +20,7 @@
   var CORE_R = 40;
   var SPAWN_R = 330;
   var BEST_KEY = "gyre-best";
-  var SHAPE_CLEAR_WAIT = 1.15;
+  var SHAPE_CLEAR_WAIT = 1.4;
   var CREAM = "#FFF4E0";
   var GREEN = "#00FF88";
   var RED = "#FF3333";
@@ -236,6 +236,41 @@
     });
   }
 
+  function pendingUnscored() {
+    var n = 0;
+    walls.forEach(function (wall) {
+      if (!wall.scored) n += 1;
+    });
+    return n;
+  }
+
+  function gatesUntilUnlock() {
+    if (sides >= MAX_SIDES) return 99;
+    var need = 1;
+    while (sidesForScore(score + need) === sides) {
+      need += 1;
+      if (need > 40) return 99;
+    }
+    return need;
+  }
+
+  function trimIncomingToLevelEnd() {
+    var need = gatesUntilUnlock();
+    var incoming = [];
+    walls.forEach(function (wall) {
+      if (!wall.scored) incoming.push(wall);
+    });
+    if (incoming.length <= need) return;
+    incoming.sort(function (a, b) {
+      return a.r - b.r;
+    });
+    var keep = incoming.slice(0, need);
+    walls = walls.filter(function (wall) {
+      if (wall.scored) return true;
+      return keep.indexOf(wall) !== -1;
+    });
+  }
+
   function isGap(wall, i) {
     if (i === wall.gap) return true;
     if (wall.wide && i === (wall.gap + 1) % wall.sides) return true;
@@ -318,7 +353,7 @@
 
     nextSpawn -= dt;
     if (nextSpawn <= 0) {
-      spawnWall();
+      if (pendingUnscored() < gatesUntilUnlock()) spawnWall();
       nextSpawn = spawnInterval();
     }
 
@@ -344,6 +379,7 @@
       nextSpawn = SHAPE_CLEAR_WAIT;
       dead = false;
     } else {
+      trimIncomingToLevelEnd();
       walls = walls.filter(function (wall) {
         return wall.r > CORE_R + 8;
       });
