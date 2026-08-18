@@ -15,7 +15,8 @@
   var CY = 318;
   var TAU = Math.PI * 2;
   var MIN_SIDES = 3;
-  var MAX_SIDES = 7;
+  var MAX_SIDES = 9;
+  var HEAT_START = 44;
   var PLAYER_R = 78;
   var CORE_R = 40;
   var SPAWN_R = 330;
@@ -49,6 +50,7 @@
   var banner = "";
   var bannerT = 0;
   var clearT = 0;
+  var lastHeatBanner = 0;
   var audioCtx = null;
 
   function playKey(event) {
@@ -152,7 +154,27 @@
     if (s < 18) return 4;
     if (s < 30) return 5;
     if (s < 44) return 6;
+    if (s < 62) return 7;
+    if (s < 84) return 8;
     return MAX_SIDES;
+  }
+
+  function lateHeat() {
+    return Math.max(0, score - (HEAT_START - 1));
+  }
+
+  function maybeHeatBanner() {
+    var h = lateHeat();
+    var tier = 0;
+    if (h >= 30) tier = 30;
+    else if (h >= 20) tier = 20;
+    else if (h >= 10) tier = 10;
+    if (!tier || tier <= lastHeatBanner) return;
+    lastHeatBanner = tier;
+    if (tier === 10) banner = "FASTER";
+    else if (tier === 20) banner = "TIGHT";
+    else banner = "DOUBLE";
+    bannerT = 1.15;
   }
 
   function faceAngle(slot, n) {
@@ -177,11 +199,21 @@
   }
 
   function wallSpeed() {
-    return 68 + (sides - MIN_SIDES) * 8;
+    return 68 + (sides - MIN_SIDES) * 8 + Math.min(52, lateHeat() * 0.95);
   }
 
   function spawnInterval() {
-    return 1.52 - (sides - MIN_SIDES) * 0.1;
+    var gap = Math.max(0.56, 1.52 - (sides - MIN_SIDES) * 0.1 - lateHeat() * 0.01);
+    if (lateHeat() >= 14 && Math.random() < 0.32) return Math.max(0.38, gap * 0.4);
+    return gap;
+  }
+
+  function wideChance() {
+    if (sides < 5) return 0;
+    var h = lateHeat();
+    if (h >= 28) return 0.04;
+    if (h >= 12) return 0.1;
+    return 0.22;
   }
 
   function ensureAudio() {
@@ -231,7 +263,7 @@
       r: SPAWN_R,
       sides: sides,
       gap: (Math.random() * sides) | 0,
-      wide: sides >= 5 && Math.random() < 0.22,
+      wide: Math.random() < wideChance(),
       scored: false,
     });
   }
@@ -297,6 +329,7 @@
     banner = "3 SIDES";
     bannerT = 1.2;
     clearT = 0;
+    lastHeatBanner = 0;
     lastTs = 0;
     pauseOverlay.classList.add("hidden");
     navigateTo("play");
@@ -336,7 +369,13 @@
     stopLoop();
     if (overStats) {
       overStats.innerHTML =
-        "GATES " + pad(score, 5) + "<br>SIDES " + sides + "<br>BEST " + pad(best, 5);
+        "GATES " +
+        pad(score, 5) +
+        "<br>SIDES " +
+        sides +
+        (lateHeat() > 0 ? "<br>HEAT " + pad(lateHeat(), 2) : "") +
+        "<br>BEST " +
+        pad(best, 5);
     }
     navigateTo("over");
   }
@@ -369,6 +408,7 @@
           wall.scored = true;
           score += 1;
           reshaped = snapToSides(sidesForScore(score));
+          if (!reshaped) maybeHeatBanner();
           clearT = reshaped ? 0.5 : 0.32;
           playClearSfx(reshaped);
         }
@@ -529,7 +569,7 @@
     ctx.textAlign = "right";
     ctx.fillStyle = GREEN;
     ctx.font = "700 14px ui-monospace, monospace";
-    ctx.fillText(clearT > 0 ? "CLEAR — ROTATE" : "GREEN GAP", 568, 47);
+    ctx.fillText(clearT > 0 ? "CLEAR — ROTATE" : lateHeat() > 0 ? "HEAT " + pad(lateHeat(), 2) : "GREEN GAP", 568, 47);
 
     if (bannerT > 0) {
       ctx.textAlign = "center";
