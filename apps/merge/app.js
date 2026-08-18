@@ -18,6 +18,7 @@
   var OY = 86;
   var UNDOS = 5;
   var BEST_KEY = "merge-best";
+  var RUN_KEY = "merge-run";
   var SPAWN_FAST = 0.9;
   var SPAWN_SLOW = 3.2;
   var HINT_T = 3.2;
@@ -49,6 +50,8 @@
   var ctx = canvas.getContext("2d");
   var pauseOverlay = document.getElementById("pause-overlay");
   var playBtn = document.getElementById("play-btn");
+  var continueBtn = document.getElementById("continue-btn");
+  var playMenuBtn = document.getElementById("play-menu-btn");
   var bestReadout = document.getElementById("best-readout");
   var overStats = document.getElementById("over-stats");
 
@@ -98,6 +101,92 @@
     try {
       localStorage.setItem(BEST_KEY, String(value));
     } catch (err) {}
+  }
+
+  function validGrid(grid) {
+    if (!grid || grid.length !== GRID) return false;
+    var r;
+    var c;
+    for (r = 0; r < GRID; r += 1) {
+      if (!grid[r] || grid[r].length !== GRID) return false;
+      for (c = 0; c < GRID; c += 1) {
+        var v = grid[r][c];
+        if (typeof v !== "number" || v < 0 || v % 1 !== 0) return false;
+        if (v !== 0 && (v & (v - 1)) !== 0) return false;
+      }
+    }
+    return true;
+  }
+
+  function parseSave(raw) {
+    if (!raw) return null;
+    var data;
+    try {
+      data = JSON.parse(raw);
+    } catch (err) {
+      return null;
+    }
+    if (!data || !validGrid(data.board)) return null;
+    if (typeof data.score !== "number" || data.score < 0) return null;
+    if (typeof data.undos !== "number" || data.undos < 0 || data.undos > UNDOS) return null;
+    if (typeof data.spawnT !== "number" || !isFinite(data.spawnT)) return null;
+    if (!Array.isArray(data.history)) return null;
+    var i;
+    for (i = 0; i < data.history.length; i += 1) {
+      var step = data.history[i];
+      if (!step || !validGrid(step.board) || typeof step.score !== "number") return null;
+    }
+    return data;
+  }
+
+  function peekSave() {
+    try {
+      return parseSave(localStorage.getItem(RUN_KEY));
+    } catch (err) {
+      return null;
+    }
+  }
+
+  function writeSave() {
+    if (!board || !board.length) return;
+    try {
+      localStorage.setItem(
+        RUN_KEY,
+        JSON.stringify({
+          board: board,
+          score: score,
+          undos: undos,
+          spawnT: spawnT,
+          history: history,
+        })
+      );
+    } catch (err) {}
+  }
+
+  function clearSave() {
+    try {
+      localStorage.removeItem(RUN_KEY);
+    } catch (err) {}
+  }
+
+  function applySave(data) {
+    board = cloneGrid(data.board);
+    score = data.score;
+    undos = data.undos;
+    spawnT = Math.max(0.2, data.spawnT);
+    history = data.history.map(function (step) {
+      return { board: cloneGrid(step.board), score: step.score };
+    });
+    hintT = 0;
+  }
+
+  function updateMenu() {
+    var has = !!peekSave();
+    if (continueBtn) {
+      if (has) continueBtn.classList.remove("hidden");
+      else continueBtn.classList.add("hidden");
+    }
+    if (playMenuBtn) playMenuBtn.textContent = has ? "NEW GAME" : "PLAY";
   }
 
   function updateBestReadout() {
@@ -286,6 +375,7 @@
     score += result.gained;
     spawnN(2);
     spawnT = spawnInterval();
+    writeSave();
     draw();
     if (!canMove()) endRun();
   }
@@ -296,10 +386,12 @@
     board = prev.board;
     score = prev.score;
     undos -= 1;
+    writeSave();
     draw();
   }
 
   function startRun() {
+    clearSave();
     running = true;
     paused = false;
     board = emptyGrid();
@@ -311,14 +403,43 @@
     spawn();
     spawn();
     spawnT = spawnInterval();
+    writeSave();
     pauseOverlay.classList.add("hidden");
     navigateTo("play");
     loop();
   }
 
+  function continueRun() {
+    var data = peekSave();
+    if (!data) {
+      startRun();
+      return;
+    }
+    applySave(data);
+    if (!canMove()) {
+      clearSave();
+      startRun();
+      return;
+    }
+    running = true;
+    paused = false;
+    lastTs = 0;
+    pauseOverlay.classList.add("hidden");
+    navigateTo("play");
+    loop();
+  }
+
+  function goHome() {
+    if (running && canMove()) writeSave();
+    stopLoop();
+    updateMenu();
+    navigateTo("home");
+  }
+
   function pauseRun() {
     if (!running || paused) return;
     paused = true;
+    writeSave();
     pauseOverlay.classList.remove("hidden");
     focusFirst(pauseOverlay);
   }
@@ -341,12 +462,14 @@
 
   function endRun() {
     if (!running) return;
+    clearSave();
     if (score > best) {
       best = score;
       writeBest(best);
       updateBestReadout();
     }
     stopLoop();
+    updateMenu();
     if (overStats) {
       overStats.innerHTML = "SCORE " + pad(score, 5) + "<br>BEST " + pad(best, 5);
     }
@@ -417,6 +540,7 @@
     if (spawnT <= 0) {
       spawnN(idleSpawnCount());
       spawnT = spawnInterval();
+      writeSave();
       if (!canMove()) {
         draw();
         endRun();
@@ -453,12 +577,11 @@
   }
 
   function handleAction(action) {
-    if (action === "play" || action === "again") startRun();
+    if (action === "continue") continueRun();
+    else if (action === "play" || action === "again") startRun();
     else if (action === "how") navigateTo("how");
-    else if (action === "home" || action === "quit") {
-      stopLoop();
-      navigateTo("home");
-    } else if (action === "resume") resumeRun();
+    else if (action === "home" || action === "quit") goHome();
+    else if (action === "resume") resumeRun();
     else if (action === "undo") undo();
   }
 
@@ -488,10 +611,7 @@
         break;
       case DPAD.BACK:
         if (currentScreen === "play" && paused) resumeRun();
-        else if (currentScreen !== "home") {
-          stopLoop();
-          navigateTo("home");
-        }
+        else if (currentScreen !== "home") goHome();
         break;
       default:
         return;
@@ -505,8 +625,17 @@
     handleAction(button.getAttribute("data-action"));
   });
 
+  document.addEventListener("visibilitychange", function () {
+    if (document.visibilityState === "hidden" && running && canMove()) writeSave();
+  });
+
+  window.addEventListener("pagehide", function () {
+    if (running && canMove()) writeSave();
+  });
+
   collectScreens();
   best = readBest();
   updateBestReadout();
+  updateMenu();
   focusFirst(screens.home);
 })();

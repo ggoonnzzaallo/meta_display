@@ -1,7 +1,7 @@
 {
   "name": "MERGE",
   "short_name": "Merge",
-  "description": "6x6 2048: swipe to merge. Empty space fills faster.",
+  "description": "6x6 2048: swipe to merge. Progress is saved when you leave.",
   "icons": [
     { "src": "favicon.png", "sizes": "128x128", "type": "image/png" }
   ],
