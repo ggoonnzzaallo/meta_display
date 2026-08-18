@@ -9,7 +9,7 @@ import zlib
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-BLUE = (0, 163, 199)
+BLUE = (0, 122, 168)
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 
