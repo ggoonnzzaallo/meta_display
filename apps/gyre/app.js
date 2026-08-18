@@ -48,6 +48,8 @@
   var flash = 0;
   var banner = "";
   var bannerT = 0;
+  var clearT = 0;
+  var audioCtx = null;
 
   function playKey(event) {
     var k = event.key;
@@ -182,6 +184,43 @@
     return 1.52 - (sides - MIN_SIDES) * 0.1;
   }
 
+  function ensureAudio() {
+    var AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return null;
+    if (!audioCtx) audioCtx = new AC();
+    if (audioCtx.state === "suspended") audioCtx.resume();
+    return audioCtx;
+  }
+
+  function beep(freq, dur, type, vol, slideTo) {
+    var ctx = ensureAudio();
+    if (!ctx) return;
+    var t = ctx.currentTime;
+    var osc = ctx.createOscillator();
+    var gain = ctx.createGain();
+    osc.type = type || "sine";
+    osc.frequency.setValueAtTime(Math.max(40, freq), t);
+    if (slideTo) {
+      osc.frequency.exponentialRampToValueAtTime(Math.max(40, slideTo), t + dur);
+    }
+    gain.gain.setValueAtTime(0.0001, t);
+    gain.gain.exponentialRampToValueAtTime(Math.max(0.0002, vol), t + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(t);
+    osc.stop(t + dur + 0.02);
+  }
+
+  function playClearSfx(reshaped) {
+    beep(560, 0.09, "triangle", 0.11, 720);
+    beep(840, 0.12, "sine", 0.06);
+    if (reshaped) {
+      beep(392, 0.22, "sine", 0.1);
+      beep(588, 0.2, "triangle", 0.07);
+    }
+  }
+
   function polyPoint(r, i, n) {
     var a = -Math.PI / 2 + (TAU * i) / n;
     return { x: CX + Math.cos(a) * r, y: CY + Math.sin(a) * r };
@@ -211,6 +250,7 @@
   }
 
   function startRun() {
+    ensureAudio();
     running = true;
     paused = false;
     score = 0;
@@ -221,6 +261,7 @@
     flash = 0;
     banner = "3 SIDES";
     bannerT = 1.2;
+    clearT = 0;
     lastTs = 0;
     pauseOverlay.classList.add("hidden");
     navigateTo("play");
@@ -273,6 +314,7 @@
   function update(dt) {
     if (flash > 0) flash -= dt;
     if (bannerT > 0) bannerT -= dt;
+    if (clearT > 0) clearT -= dt;
 
     nextSpawn -= dt;
     if (nextSpawn <= 0) {
@@ -292,6 +334,8 @@
           wall.scored = true;
           score += 1;
           reshaped = snapToSides(sidesForScore(score));
+          clearT = reshaped ? 0.5 : 0.32;
+          playClearSfx(reshaped);
         }
       }
     });
@@ -333,40 +377,43 @@
     var b;
     var n = wall.sides;
     var passed = wall.scored || wall.r < PLAYER_R;
-    var width = passed ? 3 : 5;
+    var width = passed ? 4 : 5;
+    var color = passed ? GREEN : RED;
     ctx.lineCap = "butt";
     ctx.lineJoin = "miter";
     ctx.shadowBlur = 0;
-    ctx.globalAlpha = passed ? 0.32 : 1;
+    ctx.globalAlpha = passed ? 0.55 : 1;
 
     for (i = 0; i < n; i += 1) {
-      if (isGap(wall, i)) continue;
+      if (!passed && isGap(wall, i)) continue;
       a = polyPoint(wall.r, i, n);
       b = polyPoint(wall.r, i + 1, n);
       ctx.beginPath();
       ctx.moveTo(a.x, a.y);
       ctx.lineTo(b.x, b.y);
-      ctx.strokeStyle = RED;
+      ctx.strokeStyle = color;
       ctx.lineWidth = width;
-      ctx.shadowColor = RED;
-      ctx.shadowBlur = passed ? 0 : 8;
+      ctx.shadowColor = color;
+      ctx.shadowBlur = passed ? 12 : 8;
       ctx.stroke();
       ctx.shadowBlur = 0;
     }
 
-    for (i = 0; i < n; i += 1) {
-      if (!isGap(wall, i)) continue;
-      a = polyPoint(wall.r, i, n);
-      b = polyPoint(wall.r, i + 1, n);
-      ctx.beginPath();
-      ctx.moveTo(a.x, a.y);
-      ctx.lineTo(b.x, b.y);
-      ctx.strokeStyle = GREEN;
-      ctx.lineWidth = width + 1;
-      ctx.shadowColor = GREEN;
-      ctx.shadowBlur = passed ? 0 : 10;
-      ctx.stroke();
-      ctx.shadowBlur = 0;
+    if (!passed) {
+      for (i = 0; i < n; i += 1) {
+        if (!isGap(wall, i)) continue;
+        a = polyPoint(wall.r, i, n);
+        b = polyPoint(wall.r, i + 1, n);
+        ctx.beginPath();
+        ctx.moveTo(a.x, a.y);
+        ctx.lineTo(b.x, b.y);
+        ctx.strokeStyle = GREEN;
+        ctx.lineWidth = width + 1;
+        ctx.shadowColor = GREEN;
+        ctx.shadowBlur = 10;
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+      }
     }
     ctx.globalAlpha = 1;
   }
@@ -399,14 +446,15 @@
     ctx.lineTo(outer1.x, outer1.y);
     ctx.lineTo(outer0.x, outer0.y);
     ctx.closePath();
-    ctx.fillStyle = "rgba(255, 244, 224, 0.32)";
+    ctx.fillStyle =
+      clearT > 0 ? "rgba(0, 255, 136, " + Math.min(0.55, clearT * 1.8) + ")" : "rgba(255, 244, 224, 0.32)";
     ctx.fill();
     ctx.beginPath();
     ctx.moveTo(outer0.x, outer0.y);
     ctx.lineTo(outer1.x, outer1.y);
-    ctx.strokeStyle = CREAM;
-    ctx.lineWidth = 5;
-    ctx.shadowColor = CREAM;
+    ctx.strokeStyle = clearT > 0 ? GREEN : CREAM;
+    ctx.lineWidth = clearT > 0 ? 8 : 5;
+    ctx.shadowColor = clearT > 0 ? GREEN : CREAM;
     ctx.shadowBlur = 8;
     ctx.stroke();
     ctx.shadowBlur = 0;
@@ -424,8 +472,8 @@
     ctx.lineTo(px - tx * 11 - ca * 14, py - ty * 11 - sa * 14);
     ctx.lineTo(px + tx * 11 - ca * 14, py + ty * 11 - sa * 14);
     ctx.closePath();
-    ctx.fillStyle = CREAM;
-    ctx.shadowColor = CREAM;
+    ctx.fillStyle = clearT > 0 ? GREEN : CREAM;
+    ctx.shadowColor = clearT > 0 ? GREEN : CREAM;
     ctx.shadowBlur = 12;
     ctx.fill();
     ctx.shadowBlur = 0;
@@ -439,13 +487,13 @@
     ctx.textAlign = "left";
     ctx.textBaseline = "alphabetic";
     ctx.fillText("GATES " + pad(score, 5), 28, 47);
-    ctx.fillStyle = CREAM;
+    ctx.fillStyle = clearT > 0 ? GREEN : CREAM;
     ctx.font = "700 16px ui-monospace, monospace";
     ctx.fillText(sides + " SIDES", 220, 47);
     ctx.textAlign = "right";
     ctx.fillStyle = GREEN;
     ctx.font = "700 14px ui-monospace, monospace";
-    ctx.fillText("GREEN GAP", 568, 47);
+    ctx.fillText(clearT > 0 ? "CLEAR — ROTATE" : "GREEN GAP", 568, 47);
 
     if (bannerT > 0) {
       ctx.textAlign = "center";
@@ -462,6 +510,11 @@
     walls.forEach(drawWall);
     drawPoly(CORE_R, sides, CREAM, 3, 0.7);
     drawPlayerLane();
+    if (clearT > 0) {
+      var pulse = Math.min(1, clearT * 3.2);
+      drawPoly(PLAYER_R, sides, GREEN, 9, pulse);
+      drawPoly(PLAYER_R + (0.32 - Math.min(0.32, clearT)) * 90, sides, GREEN, 3, pulse * 0.45);
+    }
     drawPlayer();
 
     if (flash > 0) {
