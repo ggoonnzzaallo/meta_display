@@ -58,6 +58,7 @@ From the [setup guide](https://wearables.developer.meta.com/docs/develop/webapps
 
 ```text
 index.html        600×600 launcher (lists apps)
+apps/trace/       pinch-and-drag outline tracing
 apps/situation/   unofficial headline terminal (data from monitor-the-situation.com via feed.json)
 apps/markets/     movers, earnings, headlines (Yahoo quotes + Nasdaq + WSJ/CNBC/SA)
 apps/starter/     smoke-test Web App
