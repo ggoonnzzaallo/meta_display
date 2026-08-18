@@ -291,18 +291,123 @@
     return pts;
   }
 
+  function arch(cx, cy, r) {
+    var pts = [];
+    var i;
+    for (i = 0; i <= 32; i++) {
+      var t = Math.PI + (i / 32) * Math.PI;
+      pts.push({ x: cx + r * Math.cos(t), y: cy + r * Math.sin(t) });
+    }
+    return pts;
+  }
+
+  function ess(cx, cy, w, h) {
+    var pts = [];
+    var i;
+    for (i = 0; i <= 48; i++) {
+      var t = i / 48;
+      pts.push({
+        x: cx - (w / 2) * Math.sin(t * Math.PI * 2),
+        y: cy - h / 2 + t * h,
+      });
+    }
+    return pts;
+  }
+
+  function moon(cx, cy, r) {
+    var pts = [];
+    var i;
+    var span = 1.35 * Math.PI;
+    var start = -span / 2;
+    for (i = 0; i <= 24; i++) {
+      var t = start + (i / 24) * span;
+      pts.push({ x: cx + r * Math.cos(t), y: cy + r * Math.sin(t) });
+    }
+    for (i = 24; i >= 0; i--) {
+      var u = start + (i / 24) * span;
+      pts.push({
+        x: cx + 36 + r * 0.62 * Math.cos(u),
+        y: cy + r * 0.62 * Math.sin(u),
+      });
+    }
+    return pts;
+  }
+
+  function bolt() {
+    return [
+      { x: 360, y: 140 },
+      { x: 230, y: 310 },
+      { x: 320, y: 310 },
+      { x: 230, y: 500 },
+    ];
+  }
+
+  function arrow() {
+    return [
+      { x: 90, y: 260 },
+      { x: 330, y: 260 },
+      { x: 330, y: 180 },
+      { x: 510, y: 318 },
+      { x: 330, y: 456 },
+      { x: 330, y: 376 },
+      { x: 90, y: 376 },
+    ];
+  }
+
+  function spiral(cx, cy, r0, r1, turns) {
+    var pts = [];
+    var n = 72;
+    var i;
+    for (i = 0; i <= n; i++) {
+      var t = i / n;
+      var a = t * turns * Math.PI * 2 - Math.PI / 2;
+      var r = r0 + (r1 - r0) * t;
+      pts.push({ x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) });
+    }
+    return pts;
+  }
+
   function buildFigures() {
     var cx = 300;
     var cy = 318;
     return [
       makeFigure("LINE", [{ x: 90, y: 320 }, { x: 510, y: 320 }], false),
+      makeFigure("SLASH", [{ x: 120, y: 460 }, { x: 480, y: 180 }], false),
+      makeFigure(
+        "L",
+        [
+          { x: 150, y: 150 },
+          { x: 150, y: 470 },
+          { x: 470, y: 470 },
+        ],
+        false
+      ),
+      makeFigure(
+        "Z",
+        [
+          { x: 140, y: 170 },
+          { x: 460, y: 170 },
+          { x: 140, y: 470 },
+          { x: 460, y: 470 },
+        ],
+        false
+      ),
       makeFigure("TRIANGLE", poly(3, cx, cy + 18, 186, -Math.PI / 2), true),
       makeFigure("SQUARE", poly(4, cx, cy, 168, Math.PI / 4), true),
+      makeFigure("DIAMOND", poly(4, cx, cy, 176, 0), true),
+      makeFigure("PENTAGON", poly(5, cx, cy, 176, -Math.PI / 2), true),
       makeFigure("HOUSE", house(cx, cy + 8, 280, 260), true),
+      makeFigure("ARROW", arrow(), true),
       makeFigure("CIRCLE", ellipse(cx, cy, 168, 168, 48), true),
+      makeFigure("ARCH", arch(cx, cy + 40, 180), false),
+      makeFigure("OVAL", ellipse(cx, cy, 210, 120, 48), true),
+      makeFigure("S", ess(cx, cy, 200, 280), false),
       makeFigure("HEART", heart(cx, cy + 8, 11.2), true),
+      makeFigure("MOON", moon(cx - 10, cy, 170), true),
       makeFigure("STAR", star(cx, cy, 176, 78, 5), true),
+      makeFigure("BOLT", bolt(), false),
       makeFigure("LOOP", infinity(cx, cy, 190, 110), true),
+      makeFigure("SPIRAL", spiral(cx, cy, 22, 168, 2.2), false),
     ];
   }
 
