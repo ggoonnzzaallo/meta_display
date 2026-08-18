@@ -60,17 +60,27 @@ body {
   min-width: 0;
 }
 
-.logo {
-  width: 40px;
-  height: 40px;
+.logo-mark {
+  width: 44px;
+  height: 44px;
   flex-shrink: 0;
-  border-radius: 10px;
-  display: block;
+  border-radius: 12px;
+  background: #00d4ff;
+  color: #ffffff;
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  box-shadow: 0 0 16px rgba(0, 212, 255, 0.55);
 }
 
 .header h1 {
-  font-size: 24px;
-  font-weight: 700;
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
 }
 
 .header-meta {
