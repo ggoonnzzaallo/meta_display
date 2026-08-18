@@ -15,7 +15,7 @@
     { name: "Gyre", href: "apps/gyre/", version: "v9", updated: "2026-08-18T15:28:00Z", blurb: "Thin lines. Hold the cream face until they cross" },
     { name: "Stack", href: "apps/stack/", version: "v4", updated: "2026-08-17T19:51:41Z", blurb: "Pinch to drop and keep the width" },
     { name: "Well", href: "apps/well/", version: "v5", updated: "2026-08-17T20:41:31Z", blurb: "Tiny Tetris. Pinch hard-drops" },
-    { name: "Merge", href: "apps/merge/", version: "v4", updated: "2026-08-18T15:36:00Z", blurb: "6×6 2048. Quit and CONTINUE keeps the board" },
+    { name: "Merge", href: "apps/merge/", version: "v5", updated: "2026-08-18T15:40:00Z", blurb: "6×6 2048. Merges chime; bigger tiles sound fuller" },
     { name: "Putt", href: "apps/putt/", version: "v2", updated: "2026-08-17T19:51:41Z", blurb: "Card golf. Land on the cup" },
     { name: "Trio", href: "apps/trio/", version: "v1", updated: "2026-08-16T17:53:18Z", blurb: "Threes-style slider. One step per swipe" },
     { name: "Court", href: "apps/court/", version: "v2", updated: "2026-08-17T19:51:41Z", blurb: "Left or right decrees. Keep four meters" },

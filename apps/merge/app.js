@@ -66,6 +66,7 @@
   var history = [];
   var hintT = 0;
   var spawnT = 0;
+  var audioCtx = null;
 
   function playKey(event) {
     var k = event.key;
@@ -295,6 +296,60 @@
     return empties().length >= 18 ? 2 : 1;
   }
 
+  function ensureAudio() {
+    var AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return null;
+    if (!audioCtx) audioCtx = new AC();
+    if (audioCtx.state === "suspended") audioCtx.resume();
+    return audioCtx;
+  }
+
+  function beep(freq, dur, type, vol, slideTo) {
+    var ctx = ensureAudio();
+    if (!ctx) return;
+    var t = ctx.currentTime;
+    var osc = ctx.createOscillator();
+    var gain = ctx.createGain();
+    osc.type = type || "sine";
+    osc.frequency.setValueAtTime(Math.max(40, freq), t);
+    if (slideTo) {
+      osc.frequency.exponentialRampToValueAtTime(Math.max(40, slideTo), t + dur);
+    }
+    gain.gain.setValueAtTime(0.0001, t);
+    gain.gain.exponentialRampToValueAtTime(Math.max(0.0002, vol), t + 0.012);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(t);
+    osc.stop(t + dur + 0.02);
+  }
+
+  function playMergeSfx(maxTile, mergeCount) {
+    if (!maxTile) return;
+    var rank = Math.log(maxTile) / Math.LN2;
+    var n = Math.max(0, rank - 2);
+    var extra = Math.min(3, Math.max(0, (mergeCount || 1) - 1));
+    var richness = n + extra * 0.65;
+    var ping = 400 * Math.pow(1.065, Math.min(n, 10));
+    if (ping > 920) ping = 920;
+    var vol = 0.07 + Math.min(0.09, richness * 0.008);
+    var dur = 0.1 + Math.min(0.18, richness * 0.016);
+
+    beep(ping * 0.9, dur, "triangle", vol, ping * 1.16);
+
+    if (richness >= 3) {
+      beep(ping * 1.5, dur + 0.05, "sine", vol * 0.5);
+    }
+    if (richness >= 6) {
+      beep(98 + n * 3, 0.24 + richness * 0.01, "sine", 0.11, 64);
+      beep(ping * 2, dur + 0.08, "sine", vol * 0.32);
+    }
+    if (richness >= 9) {
+      beep(ping * 1.25, dur + 0.14, "triangle", vol * 0.42);
+      beep(72, 0.36, "sine", 0.13, 48);
+    }
+  }
+
   function slideLine(values, reverse) {
     var vals = values.filter(function (v) {
       return v;
@@ -302,12 +357,16 @@
     if (reverse) vals.reverse();
     var merged = [];
     var gained = 0;
+    var maxTile = 0;
+    var merges = 0;
     var i = 0;
     while (i < vals.length) {
       if (i + 1 < vals.length && vals[i] === vals[i + 1]) {
         var n = vals[i] * 2;
         merged.push(n);
         gained += n;
+        merges += 1;
+        if (n > maxTile) maxTile = n;
         i += 2;
       } else {
         merged.push(vals[i]);
@@ -316,12 +375,14 @@
     }
     while (merged.length < GRID) merged.push(0);
     if (reverse) merged.reverse();
-    return { line: merged, gained: gained };
+    return { line: merged, gained: gained, maxTile: maxTile, merges: merges };
   }
 
   function shifted(dir) {
     var next = cloneGrid(board);
     var gained = 0;
+    var maxTile = 0;
+    var merges = 0;
     var r;
     var c;
     if (dir === "left" || dir === "right") {
@@ -329,6 +390,8 @@
         var row = slideLine(next[r], dir === "right");
         next[r] = row.line;
         gained += row.gained;
+        merges += row.merges;
+        if (row.maxTile > maxTile) maxTile = row.maxTile;
       }
     } else {
       for (c = 0; c < GRID; c += 1) {
@@ -337,6 +400,8 @@
         var res = slideLine(col, dir === "down");
         for (r = 0; r < GRID; r += 1) next[r][c] = res.line[r];
         gained += res.gained;
+        merges += res.merges;
+        if (res.maxTile > maxTile) maxTile = res.maxTile;
       }
     }
     var changed = false;
@@ -345,7 +410,7 @@
         if (next[r][c] !== board[r][c]) changed = true;
       }
     }
-    return { board: next, gained: gained, changed: changed };
+    return { board: next, gained: gained, changed: changed, maxTile: maxTile, merges: merges };
   }
 
   function canMove() {
@@ -373,6 +438,7 @@
     pushHistory();
     board = result.board;
     score += result.gained;
+    if (result.gained) playMergeSfx(result.maxTile, result.merges);
     spawnN(2);
     spawnT = spawnInterval();
     writeSave();
@@ -391,6 +457,7 @@
   }
 
   function startRun() {
+    ensureAudio();
     clearSave();
     running = true;
     paused = false;
@@ -421,6 +488,7 @@
       startRun();
       return;
     }
+    ensureAudio();
     running = true;
     paused = false;
     lastTs = 0;
