@@ -2,8 +2,14 @@
   "name": "MERGE",
   "short_name": "Merge",
   "description": "6x6 2048: swipe to merge. Progress is saved when you leave.",
+  "id": "/meta_display/apps/merge/",
+  "start_url": "/meta_display/apps/merge/",
+  "scope": "/meta_display/apps/merge/",
   "icons": [
-    { "src": "favicon.png", "sizes": "128x128", "type": "image/png" }
+    { "src": "/meta_display/apps/merge/icon-96.png", "sizes": "96x96", "type": "image/png", "purpose": "any" },
+    { "src": "/meta_display/apps/merge/icon-128.png", "sizes": "128x128", "type": "image/png", "purpose": "any" },
+    { "src": "/meta_display/apps/merge/apple-touch-icon.png", "sizes": "180x180", "type": "image/png", "purpose": "any" },
+    { "src": "/meta_display/apps/merge/favicon.png", "sizes": "192x192", "type": "image/png", "purpose": "any" }
   ],
   "background_color": "#000000",
   "theme_color": "#000000",

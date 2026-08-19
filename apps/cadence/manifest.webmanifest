@@ -2,8 +2,14 @@
   "name": "CADENCE",
   "short_name": "Cadence",
   "description": "Inward rhythm: tap the matching arrow when a chevron hits the center ring.",
+  "id": "/meta_display/apps/cadence/",
+  "start_url": "/meta_display/apps/cadence/",
+  "scope": "/meta_display/apps/cadence/",
   "icons": [
-    { "src": "favicon.png", "sizes": "128x128", "type": "image/png" }
+    { "src": "/meta_display/apps/cadence/icon-96.png", "sizes": "96x96", "type": "image/png", "purpose": "any" },
+    { "src": "/meta_display/apps/cadence/icon-128.png", "sizes": "128x128", "type": "image/png", "purpose": "any" },
+    { "src": "/meta_display/apps/cadence/apple-touch-icon.png", "sizes": "180x180", "type": "image/png", "purpose": "any" },
+    { "src": "/meta_display/apps/cadence/favicon.png", "sizes": "192x192", "type": "image/png", "purpose": "any" }
   ],
   "background_color": "#000000",
   "theme_color": "#000000",

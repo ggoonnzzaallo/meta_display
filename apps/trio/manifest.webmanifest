@@ -2,8 +2,14 @@
   "name": "TRIO",
   "short_name": "Trio",
   "description": "4x4 number slider: 1 and 2 make 3, then doubles. One space per swipe.",
+  "id": "/meta_display/apps/trio/",
+  "start_url": "/meta_display/apps/trio/",
+  "scope": "/meta_display/apps/trio/",
   "icons": [
-    { "src": "favicon.png", "sizes": "128x128", "type": "image/png" }
+    { "src": "/meta_display/apps/trio/icon-96.png", "sizes": "96x96", "type": "image/png", "purpose": "any" },
+    { "src": "/meta_display/apps/trio/icon-128.png", "sizes": "128x128", "type": "image/png", "purpose": "any" },
+    { "src": "/meta_display/apps/trio/apple-touch-icon.png", "sizes": "180x180", "type": "image/png", "purpose": "any" },
+    { "src": "/meta_display/apps/trio/favicon.png", "sizes": "192x192", "type": "image/png", "purpose": "any" }
   ],
   "background_color": "#000000",
   "theme_color": "#000000",

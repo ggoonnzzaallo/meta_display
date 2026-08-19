@@ -2,8 +2,14 @@
   "name": "TRACE",
   "short_name": "Trace",
   "description": "Pinch and drag to trace an outline. Stay close for a higher score.",
+  "id": "/meta_display/apps/trace/",
+  "start_url": "/meta_display/apps/trace/",
+  "scope": "/meta_display/apps/trace/",
   "icons": [
-    { "src": "favicon.png", "sizes": "128x128", "type": "image/png" }
+    { "src": "/meta_display/apps/trace/icon-96.png", "sizes": "96x96", "type": "image/png", "purpose": "any" },
+    { "src": "/meta_display/apps/trace/icon-128.png", "sizes": "128x128", "type": "image/png", "purpose": "any" },
+    { "src": "/meta_display/apps/trace/apple-touch-icon.png", "sizes": "180x180", "type": "image/png", "purpose": "any" },
+    { "src": "/meta_display/apps/trace/favicon.png", "sizes": "192x192", "type": "image/png", "purpose": "any" }
   ],
   "background_color": "#000000",
   "theme_color": "#000000",

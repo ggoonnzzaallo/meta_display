@@ -2,8 +2,14 @@
   "name": "APEX",
   "short_name": "Apex",
   "description": "F1 reaction trainer: lights out, then brake and turn at the apex.",
+  "id": "/meta_display/apps/apex/",
+  "start_url": "/meta_display/apps/apex/",
+  "scope": "/meta_display/apps/apex/",
   "icons": [
-    { "src": "favicon.png", "sizes": "128x128", "type": "image/png" }
+    { "src": "/meta_display/apps/apex/icon-96.png", "sizes": "96x96", "type": "image/png", "purpose": "any" },
+    { "src": "/meta_display/apps/apex/icon-128.png", "sizes": "128x128", "type": "image/png", "purpose": "any" },
+    { "src": "/meta_display/apps/apex/apple-touch-icon.png", "sizes": "180x180", "type": "image/png", "purpose": "any" },
+    { "src": "/meta_display/apps/apex/favicon.png", "sizes": "192x192", "type": "image/png", "purpose": "any" }
   ],
   "background_color": "#000000",
   "theme_color": "#000000",
