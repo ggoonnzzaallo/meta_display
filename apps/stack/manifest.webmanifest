@@ -2,8 +2,14 @@
   "name": "STACK",
   "short_name": "Stack",
   "description": "Pinch to drop a sliding bar. Stack it true or the tower slips.",
+  "id": "/meta_display/apps/stack/",
+  "start_url": "/meta_display/apps/stack/",
+  "scope": "/meta_display/apps/stack/",
   "icons": [
-    { "src": "favicon.png", "sizes": "128x128", "type": "image/png" }
+    { "src": "/meta_display/apps/stack/icon-96.png", "sizes": "96x96", "type": "image/png", "purpose": "any" },
+    { "src": "/meta_display/apps/stack/icon-128.png", "sizes": "128x128", "type": "image/png", "purpose": "any" },
+    { "src": "/meta_display/apps/stack/apple-touch-icon.png", "sizes": "180x180", "type": "image/png", "purpose": "any" },
+    { "src": "/meta_display/apps/stack/favicon.png", "sizes": "192x192", "type": "image/png", "purpose": "any" }
   ],
   "background_color": "#000000",
   "theme_color": "#000000",

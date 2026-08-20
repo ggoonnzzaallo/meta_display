@@ -2,10 +2,14 @@
   "name": "Starter",
   "short_name": "Starter",
   "description": "Starter smoke test for Meta Ray-Ban Display glasses.",
+  "id": "/meta_display/apps/starter/",
+  "start_url": "/meta_display/apps/starter/",
+  "scope": "/meta_display/apps/starter/",
   "icons": [
-    { "src": "icon-96.png", "sizes": "96x96", "type": "image/png" },
-    { "src": "apple-touch-icon.png", "sizes": "180x180", "type": "image/png" },
-    { "src": "favicon.png", "sizes": "192x192", "type": "image/png" }
+    { "src": "/meta_display/apps/starter/icon-96.png", "sizes": "96x96", "type": "image/png", "purpose": "any" },
+    { "src": "/meta_display/apps/starter/icon-128.png", "sizes": "128x128", "type": "image/png", "purpose": "any" },
+    { "src": "/meta_display/apps/starter/apple-touch-icon.png", "sizes": "180x180", "type": "image/png", "purpose": "any" },
+    { "src": "/meta_display/apps/starter/favicon.png", "sizes": "192x192", "type": "image/png", "purpose": "any" }
   ],
   "background_color": "#000000",
   "theme_color": "#000000",

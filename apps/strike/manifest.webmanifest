@@ -2,8 +2,14 @@
   "name": "STRIKE",
   "short_name": "Strike",
   "description": "See-through HUD: look at the real world, pinch to fire. Three shots, then reload.",
+  "id": "/meta_display/apps/strike/",
+  "start_url": "/meta_display/apps/strike/",
+  "scope": "/meta_display/apps/strike/",
   "icons": [
-    { "src": "favicon.png", "sizes": "128x128", "type": "image/png" }
+    { "src": "/meta_display/apps/strike/icon-96.png", "sizes": "96x96", "type": "image/png", "purpose": "any" },
+    { "src": "/meta_display/apps/strike/icon-128.png", "sizes": "128x128", "type": "image/png", "purpose": "any" },
+    { "src": "/meta_display/apps/strike/apple-touch-icon.png", "sizes": "180x180", "type": "image/png", "purpose": "any" },
+    { "src": "/meta_display/apps/strike/favicon.png", "sizes": "192x192", "type": "image/png", "purpose": "any" }
   ],
   "background_color": "#000000",
   "theme_color": "#000000",
