@@ -292,8 +292,3 @@ body {
   line-height: 1.35;
   color: var(--text-secondary);
 }
-
-.detail-card .source-credit {
-  margin-top: 16px;
-  white-space: normal;
-}

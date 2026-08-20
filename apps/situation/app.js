@@ -57,6 +57,36 @@
     y: 0,
     scroll: 0,
   };
+  var audioCtx = null;
+  var flipSfxAt = 0;
+
+  function ensureAudio() {
+    var AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return null;
+    if (!audioCtx) audioCtx = new AC();
+    if (audioCtx.state === "suspended") audioCtx.resume();
+    return audioCtx;
+  }
+
+  function playFlipSfx() {
+    var ctx = ensureAudio();
+    if (!ctx) return;
+    var t = ctx.currentTime;
+    if (t - flipSfxAt < 0.06) return;
+    flipSfxAt = t;
+    var osc = ctx.createOscillator();
+    var gain = ctx.createGain();
+    osc.type = "triangle";
+    osc.frequency.setValueAtTime(620, t);
+    osc.frequency.exponentialRampToValueAtTime(880, t + 0.06);
+    gain.gain.setValueAtTime(0.0001, t);
+    gain.gain.exponentialRampToValueAtTime(0.05, t + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.07);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(t);
+    osc.stop(t + 0.09);
+  }
 
   function collectScreens() {
     document.querySelectorAll(".screen").forEach(function (screen) {
@@ -358,6 +388,7 @@
 
   function openDetail(item) {
     if (!item) return;
+    ensureAudio();
     renderDetail(item);
     navigateTo("detail");
     focusDetailBack();
@@ -368,8 +399,10 @@
     var idx = state.detailIndex;
     if (idx < 0) idx = 0;
     var next = (idx + delta + state.visible.length) % state.visible.length;
+    if (next === idx) return;
     renderDetail(state.visible[next]);
     focusDetailBack();
+    playFlipSfx();
   }
 
   function goHome() {
