@@ -1,0 +1,17 @@
+{
+  "name": "Still",
+  "short_name": "Still",
+  "description": "IMU-stabilized reading for Meta Ray-Ban Display glasses. Cancel walk-bounce so text holds still.",
+  "id": "/meta_display/apps/still/",
+  "start_url": "/meta_display/apps/still/",
+  "scope": "/meta_display/apps/still/",
+  "icons": [
+    { "src": "/meta_display/apps/still/icon-96.png", "sizes": "96x96", "type": "image/png", "purpose": "any" },
+    { "src": "/meta_display/apps/still/icon-128.png", "sizes": "128x128", "type": "image/png", "purpose": "any" },
+    { "src": "/meta_display/apps/still/apple-touch-icon.png", "sizes": "180x180", "type": "image/png", "purpose": "any" },
+    { "src": "/meta_display/apps/still/favicon.png", "sizes": "192x192", "type": "image/png", "purpose": "any" }
+  ],
+  "background_color": "#000000",
+  "theme_color": "#000000",
+  "display": "standalone"
+}

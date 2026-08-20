@@ -28,7 +28,7 @@ No package manager is required.
    ```
 
 2. Open [http://localhost:5173](http://localhost:5173) in Chrome. Situation is at `/apps/situation/`. Markets is at `/apps/markets/`. IO Probe is at `/apps/ioprobe/`.
-3. Use **arrow keys** to move focus and **Enter** to activate. That is the same input model the glasses send.
+3. Use **arrow keys** to move focus and **Enter** to activate. That is the same input model the glasses send. Still is at `/apps/still/`.
 4. Optional: install the [Display Simulator Chrome extension](https://chromewebstore.google.com/detail/jpjlmmodokemlepklkdbimceggpbjcll) and toggle it on the page to preview additive blending.
 
 ## Public hosting (GitHub Pages)
@@ -40,6 +40,7 @@ Apps are served over HTTPS from this repo, which is what the glasses require. Me
 - Markets: [https://gonzalobuilds.com/meta_display/apps/markets/](https://gonzalobuilds.com/meta_display/apps/markets/)
 - Starter: [https://gonzalobuilds.com/meta_display/apps/starter/](https://gonzalobuilds.com/meta_display/apps/starter/)
 - IO Probe: [https://gonzalobuilds.com/meta_display/apps/ioprobe/](https://gonzalobuilds.com/meta_display/apps/ioprobe/)
+- Still: [https://gonzalobuilds.com/meta_display/apps/still/](https://gonzalobuilds.com/meta_display/apps/still/)
 
 Pushes to `main` and a **15-minute** schedule deploy via `.github/workflows/pages.yml`. Situation ingest is MTS-only (`scripts/fetch_feed.py`); glasses do not fetch third-party RSS. Markets and Situation read same-origin `feed.json` files built in that job. Keep a trailing slash on app URLs so relative CSS/JS resolve.
 
@@ -63,6 +64,7 @@ apps/situation/   unofficial headline terminal (data from monitor-the-situation.
 apps/markets/     movers, earnings, headlines (Yahoo quotes + Nasdaq + WSJ/CNBC/SA)
 apps/starter/     smoke-test Web App
 apps/ioprobe/     camera / mic / location permission probe
+apps/still/       IMU-stabilized reading (walk-bounce cancel)
 scripts/fetch_feed.py     builds apps/situation/feed.json from MTS only
 scripts/fetch_markets.py  builds apps/markets/feed.json for Pages
 docs/sources.md   canonical documentation links
