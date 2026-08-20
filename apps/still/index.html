@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=600, height=600, initial-scale=1.0, user-scalable=no">
   <meta name="description" content="IMU-stabilized reading for Meta Ray-Ban Display: cancel walk-bounce so text holds still.">
   <meta name="mrbd-web-app-capable" content="yes">
-  <title>Still v1</title>
+  <title>Still v2</title>
   <link rel="icon" type="image/png" href="/meta_display/apps/still/favicon.png">
   <link rel="icon" type="image/png" sizes="96x96" href="/meta_display/apps/still/icon-96.png">
   <link rel="icon" type="image/png" sizes="128x128" href="/meta_display/apps/still/icon-128.png">
@@ -13,7 +13,7 @@
   <link rel="apple-touch-icon" href="/meta_display/apps/still/apple-touch-icon.png">
   <link rel="apple-touch-icon" sizes="180x180" href="/meta_display/apps/still/apple-touch-icon.png">
   <link rel="manifest" href="/meta_display/apps/still/manifest.webmanifest">
-  <link rel="stylesheet" href="styles.css?v=1">
+  <link rel="stylesheet" href="styles.css?v=2">
 </head>
 <body>
   <div id="app">
@@ -21,7 +21,7 @@
       <div class="title-block">
         <p class="title-tag">READING HUD</p>
         <h1>STILL</h1>
-        <p class="build">BUILD v1</p>
+        <p class="build">BUILD v2</p>
         <p class="lede title-lede">IMU cancels the walk-bounce so a paragraph can hold steady while your head moves.</p>
       </div>
       <div class="menu">
@@ -33,14 +33,14 @@
     <section id="how" class="screen hidden" aria-label="How Still works">
       <header class="header">
         <h1>HOW</h1>
-        <span class="build header-build">v1</span>
+        <span class="build header-build">v2</span>
       </header>
       <div class="content">
         <ul class="facts">
           <li>The display is glued to your skull. Walking bob makes HUD text bounce against the world.</li>
           <li>BOB cancels fast bounce (~walk) and still follows slow turns. That is the reading mode.</li>
           <li>WORLD pins the card to the heading you recenter on. OFF is the control — same walk, no correction.</li>
-          <li>Pinch READ to grant IMU. Recenter after you settle. Gain left/right if it over- or under-corrects.</li>
+          <li>Pinch READ to grant IMU, then walk. Recenter after you settle. Gain left/right if it over- or under-corrects.</li>
         </ul>
         <button class="focusable" data-action="home">BACK</button>
       </div>
@@ -74,6 +74,6 @@
       </div>
     </section>
   </div>
-  <script src="app.js?v=1"></script>
+  <script src="app.js?v=2"></script>
 </body>
 </html>

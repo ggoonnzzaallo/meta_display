@@ -10,7 +10,7 @@
   };
 
   var APPS = [
-    { name: "Still", href: "apps/still/", version: "v1", updated: "2026-08-20T22:50:00Z", blurb: "IMU reading HUD. Cancel the walk-bounce" },
+    { name: "Still", href: "apps/still/", version: "v2", updated: "2026-08-20T22:54:00Z", blurb: "IMU reading HUD. Cancel the walk-bounce" },
     { name: "Trace", href: "apps/trace/", version: "v12", updated: "2026-08-18T22:40:00Z", blurb: "Pinch-drag and stay on the outline" },
     { name: "Cadence", href: "apps/cadence/", version: "v8", updated: "2026-08-18T00:00:00Z", blurb: "Swipe matching arrows on the beat" },
     { name: "Apex", href: "apps/apex/", version: "v2", updated: "2026-08-17T23:58:53Z", blurb: "F1 lights out, then drive until you box" },

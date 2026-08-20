@@ -9,7 +9,7 @@
     SELECT: "Enter",
   };
 
-  var BUILD = "v1";
+  var BUILD = "v2";
   var SETTINGS_KEY = "still-settings";
   var MODES = ["BOB", "WORLD", "OFF"];
   var PX_PER_DEG = 14;
@@ -24,15 +24,11 @@
   var GAIN_MIN = 0.25;
   var GAIN_MAX = 2;
   var GAIN_STEP = 0.25;
-  var WALK_HZ = 1.85;
-  var WALK_PITCH = 3.4;
-  var WALK_YAW = 1.1;
-  var WALK_ROLL = 1.6;
 
   var PASSAGES = [
     "The display rides on your skull. Each step bobs it a few degrees against the world your eyes already stabilize. Still tries to slide the paragraph the other way.",
     "BOB is a high-pass. Slow turns keep the card in front of you. Fast bounce — walking, nodding, a bumpy sidewalk — gets cancelled. WORLD pins the card to the heading you recentered on.",
-    "On a monitor there is no head bounce, so READ fakes a 1.8 Hz walk. On glasses the waveguide already moves; compensation is the only motion you should see.",
+    "Walk with BOB on, then switch to OFF on the same sidewalk. If the card fights you, drop GAIN or recenter after you settle.",
   ];
 
   var screens = {};
@@ -50,13 +46,13 @@
   var gain = 1;
   var page = 0;
 
-  var demoMode = true;
   var gotOrientation = false;
   var gotMotion = false;
   var gotGravity = false;
   var orientationListening = false;
   var motionListening = false;
   var zerosSet = false;
+  var liveSeen = false;
 
   var rawAlpha = 0;
   var rawBeta = 0;
@@ -100,7 +96,6 @@
 
   var rafId = 0;
   var lastTs = 0;
-  var walkT = 0;
   var headRms = 0;
   var cardRms = 0;
 
@@ -327,22 +322,8 @@
     });
   }
 
-  function sampleRange(values) {
-    if (values.length < 2) return 0;
-    var min = values[0];
-    var max = values[0];
-    var i;
-    for (i = 1; i < values.length; i++) {
-      if (values[i] < min) min = values[i];
-      if (values[i] > max) max = values[i];
-    }
-    return max - min;
-  }
-
-  function imuLooksLive() {
-    if (gotGravity) return true;
-    if (!gotOrientation) return false;
-    return sampleRange(sampleAlpha) + sampleRange(sampleBeta) + sampleRange(sampleGamma) > 0.8;
+  function imuLive() {
+    return gotOrientation || gotGravity;
   }
 
   function recentMean(values, fallback) {
@@ -389,15 +370,6 @@
     return { yaw: yaw, pitch: pitch, roll: roll };
   }
 
-  function demoPose(t) {
-    var walk = 2 * Math.PI * WALK_HZ * t;
-    return {
-      yaw: WALK_YAW * Math.sin(walk * 0.5),
-      pitch: WALK_PITCH * Math.sin(walk),
-      roll: WALK_ROLL * Math.sin(walk + 0.35),
-    };
-  }
-
   function refreshHz(now) {
     if (!hzStamp) hzStamp = now;
     if (now - hzStamp < 1000) return;
@@ -420,34 +392,16 @@
 
   function applyCard(head, used) {
     var maxPx = mode === "WORLD" ? MAX_WORLD_PX : MAX_BOB_PX;
-    var bounceX = 0;
-    var bounceY = 0;
-    var bounceR = 0;
-    if (demoMode) {
-      bounceX = head.yaw * PX_PER_DEG;
-      bounceY = -head.pitch * PX_PER_DEG;
-      bounceR = head.roll;
-    }
-    var compX = -used.yaw * PX_PER_DEG * gain;
-    var compY = used.pitch * PX_PER_DEG * gain;
-    var compR = -used.roll * gain;
-    var x = clamp(bounceX + compX, -maxPx, maxPx);
-    var y = clamp(bounceY + compY, -maxPx, maxPx);
-    var r = clamp(bounceR + compR, -12, 12);
+    var x = clamp(-used.yaw * PX_PER_DEG * gain, -maxPx, maxPx);
+    var y = clamp(used.pitch * PX_PER_DEG * gain, -maxPx, maxPx);
+    var r = clamp(-used.roll * gain, -12, 12);
     if (cardEl) {
       cardEl.style.transform =
         "translate(" + x.toFixed(1) + "px, " + y.toFixed(1) + "px) rotate(" + r.toFixed(2) + "deg)";
     }
     var headMag = Math.sqrt(head.yaw * head.yaw + head.pitch * head.pitch);
-    var residualYaw;
-    var residualPitch;
-    if (demoMode) {
-      residualYaw = x / PX_PER_DEG;
-      residualPitch = -y / PX_PER_DEG;
-    } else {
-      residualYaw = head.yaw - used.yaw * gain;
-      residualPitch = head.pitch - used.pitch * gain;
-    }
+    var residualYaw = head.yaw - used.yaw * gain;
+    var residualPitch = head.pitch - used.pitch * gain;
     var cardMag = Math.sqrt(residualYaw * residualYaw + residualPitch * residualPitch);
     headRms = leakToward(headRms, headMag, 0.05, 0.25);
     cardRms = leakToward(cardRms, cardMag, 0.05, 0.25);
@@ -455,7 +409,7 @@
 
   function paintStatus() {
     if (statusMode) statusMode.textContent = mode;
-    if (statusSrc) statusSrc.textContent = demoMode ? "DEMO" : "LIVE";
+    if (statusSrc) statusSrc.textContent = imuLive() ? "IMU" : "WAIT";
     if (statusHz) statusHz.textContent = "— Hz";
     if (btnMode) btnMode.textContent = "MODE " + mode;
     if (btnGain) btnGain.textContent = "GAIN " + gain.toFixed(2);
@@ -471,22 +425,14 @@
     if (!lastTs) lastTs = now;
     var dt = Math.min(0.05, (now - lastTs) / 1000);
     lastTs = now;
-    walkT += dt;
     refreshHz(now);
 
-    if (imuLooksLive()) {
-      if (demoMode) {
-        demoMode = false;
-        captureZero();
-      }
+    if (imuLive() && !liveSeen) {
+      liveSeen = true;
+      captureZero();
     }
 
-    var head;
-    if (!demoMode && zerosSet) {
-      head = livePose();
-    } else {
-      head = demoPose(walkT);
-    }
+    var head = liveSeen ? livePose() : { yaw: 0, pitch: 0, roll: 0 };
 
     lookYaw = filterEuro(euroYaw, head.yaw, dt);
     lookPitch = filterEuro(euroPitch, head.pitch, dt);
@@ -498,7 +444,7 @@
     applyCard({ yaw: lookYaw, pitch: lookPitch, roll: lookRoll }, usedPose());
     if (statusSrc) {
       statusSrc.textContent =
-        (demoMode ? "DEMO" : "LIVE") +
+        (imuLive() ? "IMU" : "WAIT") +
         "  H " +
         headRms.toFixed(1) +
         "°  C " +
@@ -507,7 +453,7 @@
     }
     if (statusHz) {
       var hz = Math.max(orientHz, motionHz);
-      statusHz.textContent = demoMode ? "1.8 Hz" : hz ? hz + " Hz" : "— Hz";
+      statusHz.textContent = hz ? hz + " Hz" : "— Hz";
     }
     rafId = requestAnimationFrame(tick);
   }
@@ -526,7 +472,6 @@
 
   function beginRead() {
     requestSensors().then(function () {
-      demoMode = true;
       gotOrientation = false;
       gotMotion = false;
       gotGravity = false;
@@ -538,11 +483,10 @@
       orientHz = 0;
       motionHz = 0;
       hzStamp = 0;
-      walkT = 0;
       zerosSet = false;
+      liveSeen = false;
       resetFilters();
       startSensors();
-      captureZero();
       paintStatus();
       navigateTo("read");
       startLoop();
