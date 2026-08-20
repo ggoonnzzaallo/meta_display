@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=600, height=600, initial-scale=1.0, user-scalable=no">
+  <meta name="description" content="IMU-stabilized reading for Meta Ray-Ban Display: cancel walk-bounce so text holds still.">
+  <meta name="mrbd-web-app-capable" content="yes">
+  <title>Still v3</title>
+  <link rel="icon" type="image/png" href="/meta_display/apps/still/favicon.png">
+  <link rel="icon" type="image/png" sizes="96x96" href="/meta_display/apps/still/icon-96.png">
+  <link rel="icon" type="image/png" sizes="128x128" href="/meta_display/apps/still/icon-128.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="/meta_display/apps/still/favicon.png">
+  <link rel="apple-touch-icon" href="/meta_display/apps/still/apple-touch-icon.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="/meta_display/apps/still/apple-touch-icon.png">
+  <link rel="manifest" href="/meta_display/apps/still/manifest.webmanifest">
+  <link rel="stylesheet" href="styles.css?v=3">
+</head>
+<body>
+  <div id="app">
+    <section id="home" class="screen" aria-label="Still title">
+      <div class="title-block">
+        <p class="title-tag">READING HUD</p>
+        <h1>STILL</h1>
+        <p class="build">BUILD v3</p>
+        <p class="lede title-lede">IMU cancels the walk-bounce so a paragraph can hold steady while your head moves.</p>
+      </div>
+      <div class="menu">
+        <button class="focusable" data-action="read">READ</button>
+        <button class="focusable" data-action="how">HOW</button>
+      </div>
+    </section>
+
+    <section id="how" class="screen hidden" aria-label="How Still works">
+      <header class="header">
+        <h1>HOW</h1>
+        <span class="build header-build">v3</span>
+      </header>
+      <div class="content">
+        <ul class="facts">
+          <li>Left/right cycles recipes while you walk: OFF, SOFT, WALK, FIRM, MAX, GYRO, WORLD, INV.</li>
+          <li>OFF is the control. SOFT→MAX are the same high-pass with more gain. GYRO uses rotation rate. WORLD pins to recenter.</li>
+          <li>INV is WALK with pitch flipped. If the first four feel worse than OFF, try INV.</li>
+          <li>Pinch READ for IMU, then walk. Recenter after you settle.</li>
+        </ul>
+        <button class="focusable" data-action="home">BACK</button>
+      </div>
+    </section>
+
+    <section id="read" class="screen screen-read hidden" aria-label="Stabilized reading">
+      <div id="status-bar" class="status-bar">
+        <span id="status-mode">WALK</span>
+        <span id="status-src">WAIT</span>
+        <span id="status-hz">— Hz</span>
+      </div>
+      <div class="stage">
+        <div class="ghost-frame" aria-hidden="true"></div>
+        <article id="card" class="card">
+          <p id="card-kicker" class="card-kicker">PASSAGE 1 / 3</p>
+          <p id="card-text" class="card-text"></p>
+        </article>
+      </div>
+      <div class="controls">
+        <div class="control-row">
+          <button id="btn-preset" class="focusable" data-action="preset">PRESET WALK</button>
+          <button class="focusable" data-action="recenter">RECENTER</button>
+        </div>
+        <div class="control-row">
+          <button class="focusable" data-action="page">NEXT</button>
+          <button class="focusable" data-action="home">BACK</button>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script src="app.js?v=3"></script>
+</body>
+</html>
