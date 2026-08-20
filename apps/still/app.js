@@ -9,26 +9,28 @@
     SELECT: "Enter",
   };
 
-  var BUILD = "v2";
+  var BUILD = "v3";
   var SETTINGS_KEY = "still-settings";
-  var MODES = ["BOB", "WORLD", "OFF"];
   var PX_PER_DEG = 14;
-  var YAW_SIGN = 1;
-  var PITCH_SIGN = 1;
   var ROLL_SIGN = 1;
   var SPIKE_DEG = 50;
-  var BOB_TAU = 0.7;
-  var PREDICT_S = 0.04;
   var MAX_BOB_PX = 90;
   var MAX_WORLD_PX = 140;
-  var GAIN_MIN = 0.25;
-  var GAIN_MAX = 2;
-  var GAIN_STEP = 0.25;
+  var PRESETS = [
+    { id: "off", label: "OFF", algo: "off", gain: 0, tau: 0.7, predict: 0, pitchSign: 1, yawSign: 1 },
+    { id: "soft", label: "SOFT", algo: "bob", gain: 0.5, tau: 0.5, predict: 0, pitchSign: 1, yawSign: 1 },
+    { id: "walk", label: "WALK", algo: "bob", gain: 1, tau: 0.7, predict: 0.04, pitchSign: 1, yawSign: 1 },
+    { id: "firm", label: "FIRM", algo: "bob", gain: 1.5, tau: 0.9, predict: 0.04, pitchSign: 1, yawSign: 1 },
+    { id: "max", label: "MAX", algo: "bob", gain: 2, tau: 1.2, predict: 0.06, pitchSign: 1, yawSign: 1 },
+    { id: "gyro", label: "GYRO", algo: "gyro", gain: 1, tau: 0.55, predict: 0, pitchSign: 1, yawSign: 1 },
+    { id: "world", label: "WORLD", algo: "world", gain: 1, tau: 0.7, predict: 0.04, pitchSign: 1, yawSign: 1 },
+    { id: "inv", label: "INV", algo: "bob", gain: 1, tau: 0.7, predict: 0.04, pitchSign: -1, yawSign: 1 },
+  ];
 
   var PASSAGES = [
     "The display rides on your skull. Each step bobs it a few degrees against the world your eyes already stabilize. Still tries to slide the paragraph the other way.",
-    "BOB is a high-pass. Slow turns keep the card in front of you. Fast bounce — walking, nodding, a bumpy sidewalk — gets cancelled. WORLD pins the card to the heading you recentered on.",
-    "Walk with BOB on, then switch to OFF on the same sidewalk. If the card fights you, drop GAIN or recenter after you settle.",
+    "Left and right cycle recipes. OFF is the control. SOFT to MAX are the same high-pass with more push. GYRO uses rotation rate. WORLD pins to recenter.",
+    "If SOFT through MAX feel worse than OFF, try INV — that is WALK with pitch flipped. Recenter after you settle, then walk the same sidewalk twice.",
   ];
 
   var screens = {};
@@ -39,11 +41,9 @@
   var statusMode = document.getElementById("status-mode");
   var statusSrc = document.getElementById("status-src");
   var statusHz = document.getElementById("status-hz");
-  var btnMode = document.getElementById("btn-mode");
-  var btnGain = document.getElementById("btn-gain");
+  var btnPreset = document.getElementById("btn-preset");
 
-  var mode = "BOB";
-  var gain = 1;
+  var presetIndex = 2;
   var page = 0;
 
   var gotOrientation = false;
@@ -53,6 +53,7 @@
   var motionListening = false;
   var zerosSet = false;
   var liveSeen = false;
+  var pendingAlign = false;
 
   var rawAlpha = 0;
   var rawBeta = 0;
@@ -80,6 +81,12 @@
   var slowYaw = 0;
   var slowPitch = 0;
   var slowRoll = 0;
+  var gyroYaw = 0;
+  var gyroPitch = 0;
+  var gyroRoll = 0;
+  var slowGyroYaw = 0;
+  var slowGyroPitch = 0;
+  var slowGyroRoll = 0;
   var euroYaw = null;
   var euroPitch = null;
   var euroRoll = null;
@@ -153,6 +160,10 @@
     return prev + (next - prev) * k;
   }
 
+  function preset() {
+    return PRESETS[presetIndex] || PRESETS[2];
+  }
+
   function resetFilters() {
     euroYaw = createEuro(3.2, 0.18);
     euroPitch = createEuro(3.2, 0.18);
@@ -163,6 +174,12 @@
     slowYaw = 0;
     slowPitch = 0;
     slowRoll = 0;
+    gyroYaw = 0;
+    gyroPitch = 0;
+    gyroRoll = 0;
+    slowGyroYaw = 0;
+    slowGyroPitch = 0;
+    slowGyroRoll = 0;
     lastEulerYaw = 0;
     lastEulerPitch = 0;
     lastEulerRoll = 0;
@@ -170,19 +187,42 @@
     cardRms = 0;
   }
 
+  function holdBobBaseline() {
+    pendingAlign = true;
+    gyroYaw = 0;
+    gyroPitch = 0;
+    gyroRoll = 0;
+    slowGyroYaw = 0;
+    slowGyroPitch = 0;
+    slowGyroRoll = 0;
+    lastEulerYaw = 0;
+    lastEulerPitch = 0;
+    lastEulerRoll = 0;
+    if (euroYaw) euroYaw.x = null;
+    if (euroPitch) euroPitch.x = null;
+    if (euroRoll) euroRoll.x = null;
+  }
+
   function readSettings() {
     try {
       var raw = localStorage.getItem(SETTINGS_KEY);
       if (!raw) return;
       var data = JSON.parse(raw);
-      if (MODES.indexOf(data.mode) !== -1) mode = data.mode;
-      if (typeof data.gain === "number") gain = clamp(data.gain, GAIN_MIN, GAIN_MAX);
+      var i;
+      if (data.preset) {
+        for (i = 0; i < PRESETS.length; i++) {
+          if (PRESETS[i].id === data.preset) {
+            presetIndex = i;
+            return;
+          }
+        }
+      }
     } catch (err) {}
   }
 
   function writeSettings() {
     try {
-      localStorage.setItem(SETTINGS_KEY, JSON.stringify({ mode: mode, gain: gain }));
+      localStorage.setItem(SETTINGS_KEY, JSON.stringify({ preset: preset().id }));
     } catch (err) {}
   }
 
@@ -346,21 +386,22 @@
   }
 
   function livePose() {
+    var recipe = preset();
     var yaw;
     var pitch;
     var roll;
     if (!gotOrientation && gotGravity) {
-      yaw = gravRoll - gravRoll0;
-      pitch = PITCH_SIGN * (gravPitch - gravPitch0);
+      yaw = recipe.yawSign * (gravRoll - gravRoll0);
+      pitch = recipe.pitchSign * (gravPitch - gravPitch0);
       roll = ROLL_SIGN * wrapDelta(gravRoll, gravRoll0);
     } else {
-      yaw = YAW_SIGN * wrapDelta(rawAlpha, alpha0);
-      pitch = PITCH_SIGN * wrapDelta(rawBeta, beta0);
+      yaw = recipe.yawSign * wrapDelta(rawAlpha, alpha0);
+      pitch = recipe.pitchSign * wrapDelta(rawBeta, beta0);
       roll = ROLL_SIGN * (gotGravity ? wrapDelta(gravRoll, gravRoll0) : wrapDelta(rawGamma, gamma0));
     }
-    yaw += (rawYawRate || 0) * PREDICT_S;
-    pitch += (rawPitchRate || 0) * PREDICT_S;
-    roll += (rawRollRate || 0) * PREDICT_S;
+    yaw += recipe.yawSign * (rawYawRate || 0) * recipe.predict;
+    pitch += recipe.pitchSign * (rawPitchRate || 0) * recipe.predict;
+    roll += (rawRollRate || 0) * recipe.predict;
     if (rejectSpike(yaw, lastEulerYaw)) yaw = lastEulerYaw;
     else lastEulerYaw = yaw;
     if (rejectSpike(pitch, lastEulerPitch)) pitch = lastEulerPitch;
@@ -381,8 +422,23 @@
   }
 
   function usedPose() {
-    if (mode === "OFF") return { yaw: 0, pitch: 0, roll: 0 };
-    if (mode === "WORLD") return { yaw: lookYaw, pitch: lookPitch, roll: lookRoll };
+    var recipe = preset();
+    if (recipe.algo === "off") return { yaw: 0, pitch: 0, roll: 0 };
+    if (recipe.algo === "world") return { yaw: lookYaw, pitch: lookPitch, roll: lookRoll };
+    if (recipe.algo === "gyro") {
+      if (!gotMotion) {
+        return {
+          yaw: lookYaw - slowYaw,
+          pitch: lookPitch - slowPitch,
+          roll: lookRoll - slowRoll,
+        };
+      }
+      return {
+        yaw: gyroYaw - slowGyroYaw,
+        pitch: gyroPitch - slowGyroPitch,
+        roll: gyroRoll - slowGyroRoll,
+      };
+    }
     return {
       yaw: lookYaw - slowYaw,
       pitch: lookPitch - slowPitch,
@@ -391,28 +447,29 @@
   }
 
   function applyCard(head, used) {
-    var maxPx = mode === "WORLD" ? MAX_WORLD_PX : MAX_BOB_PX;
-    var x = clamp(-used.yaw * PX_PER_DEG * gain, -maxPx, maxPx);
-    var y = clamp(used.pitch * PX_PER_DEG * gain, -maxPx, maxPx);
-    var r = clamp(-used.roll * gain, -12, 12);
+    var recipe = preset();
+    var maxPx = recipe.algo === "world" ? MAX_WORLD_PX : MAX_BOB_PX;
+    var x = clamp(-used.yaw * PX_PER_DEG * recipe.gain, -maxPx, maxPx);
+    var y = clamp(used.pitch * PX_PER_DEG * recipe.gain, -maxPx, maxPx);
+    var r = clamp(-used.roll * recipe.gain, -12, 12);
     if (cardEl) {
       cardEl.style.transform =
         "translate(" + x.toFixed(1) + "px, " + y.toFixed(1) + "px) rotate(" + r.toFixed(2) + "deg)";
     }
     var headMag = Math.sqrt(head.yaw * head.yaw + head.pitch * head.pitch);
-    var residualYaw = head.yaw - used.yaw * gain;
-    var residualPitch = head.pitch - used.pitch * gain;
+    var residualYaw = head.yaw - used.yaw * recipe.gain;
+    var residualPitch = head.pitch - used.pitch * recipe.gain;
     var cardMag = Math.sqrt(residualYaw * residualYaw + residualPitch * residualPitch);
     headRms = leakToward(headRms, headMag, 0.05, 0.25);
     cardRms = leakToward(cardRms, cardMag, 0.05, 0.25);
   }
 
   function paintStatus() {
-    if (statusMode) statusMode.textContent = mode;
+    var recipe = preset();
+    if (statusMode) statusMode.textContent = recipe.label + " " + (presetIndex + 1) + "/" + PRESETS.length;
     if (statusSrc) statusSrc.textContent = imuLive() ? "IMU" : "WAIT";
     if (statusHz) statusHz.textContent = "— Hz";
-    if (btnMode) btnMode.textContent = "MODE " + mode;
-    if (btnGain) btnGain.textContent = "GAIN " + gain.toFixed(2);
+    if (btnPreset) btnPreset.textContent = "PRESET " + recipe.label;
     if (cardKicker) cardKicker.textContent = "PASSAGE " + (page + 1) + " / " + PASSAGES.length;
     if (cardText) cardText.textContent = PASSAGES[page];
   }
@@ -433,13 +490,31 @@
     }
 
     var head = liveSeen ? livePose() : { yaw: 0, pitch: 0, roll: 0 };
+    var recipe = preset();
+    var tau = recipe.tau || 0.7;
 
     lookYaw = filterEuro(euroYaw, head.yaw, dt);
     lookPitch = filterEuro(euroPitch, head.pitch, dt);
     lookRoll = filterEuro(euroRoll, head.roll, dt);
-    slowYaw = leakToward(slowYaw, lookYaw, dt, BOB_TAU);
-    slowPitch = leakToward(slowPitch, lookPitch, dt, BOB_TAU);
-    slowRoll = leakToward(slowRoll, lookRoll, dt, BOB_TAU);
+    if (pendingAlign) {
+      pendingAlign = false;
+      slowYaw = lookYaw;
+      slowPitch = lookPitch;
+      slowRoll = lookRoll;
+    } else {
+      slowYaw = leakToward(slowYaw, lookYaw, dt, tau);
+      slowPitch = leakToward(slowPitch, lookPitch, dt, tau);
+      slowRoll = leakToward(slowRoll, lookRoll, dt, tau);
+    }
+
+    if (gotMotion) {
+      gyroYaw += recipe.yawSign * (rawYawRate || 0) * dt;
+      gyroPitch += recipe.pitchSign * (rawPitchRate || 0) * dt;
+      gyroRoll += ROLL_SIGN * (rawRollRate || 0) * dt;
+      slowGyroYaw = leakToward(slowGyroYaw, gyroYaw, dt, tau);
+      slowGyroPitch = leakToward(slowGyroPitch, gyroPitch, dt, tau);
+      slowGyroRoll = leakToward(slowGyroRoll, gyroRoll, dt, tau);
+    }
 
     applyCard({ yaw: lookYaw, pitch: lookPitch, roll: lookRoll }, usedPose());
     if (statusSrc) {
@@ -485,6 +560,7 @@
       hzStamp = 0;
       zerosSet = false;
       liveSeen = false;
+      pendingAlign = false;
       resetFilters();
       startSensors();
       paintStatus();
@@ -499,16 +575,9 @@
     navigateTo("home");
   }
 
-  function cycleMode(dir) {
-    var idx = MODES.indexOf(mode);
-    idx = (idx + dir + MODES.length) % MODES.length;
-    mode = MODES[idx];
-    writeSettings();
-    paintStatus();
-  }
-
-  function nudgeGain(dir) {
-    gain = clamp(Math.round((gain + dir * GAIN_STEP) * 100) / 100, GAIN_MIN, GAIN_MAX);
+  function cyclePreset(dir) {
+    presetIndex = (presetIndex + dir + PRESETS.length) % PRESETS.length;
+    holdBobBaseline();
     writeSettings();
     paintStatus();
   }
@@ -530,11 +599,8 @@
       case "read":
         beginRead();
         break;
-      case "mode":
-        cycleMode(1);
-        break;
-      case "gain":
-        nudgeGain(1);
+      case "preset":
+        cyclePreset(1);
         break;
       case "recenter":
         captureZero();
@@ -547,26 +613,12 @@
     }
   }
 
-  function activeAction() {
-    var el = document.activeElement;
-    return el && el.getAttribute ? el.getAttribute("data-action") : "";
-  }
-
   document.addEventListener("keydown", function (event) {
     if (currentScreen === "read") {
-      var action = activeAction();
       if (event.key === DPAD.LEFT || event.key === DPAD.RIGHT) {
-        var dir = event.key === DPAD.RIGHT ? 1 : -1;
-        if (action === "mode") {
-          event.preventDefault();
-          cycleMode(dir);
-          return;
-        }
-        if (action === "gain") {
-          event.preventDefault();
-          nudgeGain(dir);
-          return;
-        }
+        event.preventDefault();
+        cyclePreset(event.key === DPAD.RIGHT ? 1 : -1);
+        return;
       }
     }
 
