@@ -1,0 +1,245 @@
+:root {
+  --black: #050807;
+  --surface: #111815;
+  --surface-2: #19231f;
+  --ink: #f2faf6;
+  --muted: #a4b5ad;
+  --leaf: #78efbd;
+  --cyan: #42ddff;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 80% 5%, rgba(120, 239, 189, 0.12), transparent 32rem),
+    var(--black);
+  color: var(--ink);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+main {
+  width: min(760px, calc(100% - 32px));
+  margin: 0 auto;
+  padding: 28px 0 64px;
+}
+
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--ink);
+  font-size: 20px;
+  font-weight: 850;
+  letter-spacing: 0.15em;
+  text-decoration: none;
+}
+
+.leaf-mark {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  border-radius: 12px 12px 12px 3px;
+  background: var(--leaf);
+  color: #0a1a13;
+  letter-spacing: 0;
+}
+
+.privacy,
+.eyebrow {
+  color: var(--leaf);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+}
+
+.hero {
+  padding: 82px 0 38px;
+}
+
+.hero h1 {
+  max-width: 680px;
+  margin: 12px 0 16px;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(42px, 8vw, 68px);
+  font-weight: 500;
+  line-height: 1.02;
+}
+
+.hero > p:last-child {
+  max-width: 650px;
+  color: var(--muted);
+  font-size: 18px;
+  line-height: 1.55;
+}
+
+.transfer-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 28px;
+  border: 1px solid rgba(120, 239, 189, 0.22);
+  border-radius: 22px;
+  background: rgba(17, 24, 21, 0.88);
+  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.35);
+}
+
+label {
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 750;
+  letter-spacing: 0.05em;
+}
+
+input[type="text"] {
+  width: 100%;
+  height: 68px;
+  padding: 0 18px;
+  border: 2px solid #2a3933;
+  border-radius: 14px;
+  outline: none;
+  background: #090e0c;
+  color: var(--leaf);
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+input[type="text"]:focus,
+input[type="file"]:focus-visible {
+  border-color: var(--cyan);
+  box-shadow: 0 0 0 4px rgba(66, 221, 255, 0.12);
+}
+
+.file-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  min-height: 66px;
+  padding: 12px 14px;
+  border: 2px dashed #2a3933;
+  border-radius: 14px;
+}
+
+input[type="file"] {
+  max-width: 100%;
+  color: var(--muted);
+}
+
+input[type="file"]::file-selector-button {
+  margin-right: 12px;
+  padding: 10px 14px;
+  border: 0;
+  border-radius: 9px;
+  background: var(--surface-2);
+  color: var(--ink);
+  font-weight: 750;
+}
+
+#file-summary {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.book-preview {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 6px;
+  padding: 16px;
+  border-radius: 14px;
+  background: var(--surface-2);
+}
+
+.book-glyph {
+  display: grid;
+  width: 64px;
+  height: 78px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 4px 11px 11px 4px;
+  background: linear-gradient(135deg, var(--leaf), #3b9f7c);
+  color: #092017;
+  font-family: Georgia, serif;
+  font-size: 23px;
+  font-weight: 700;
+}
+
+.book-preview strong,
+.book-preview span {
+  display: block;
+}
+
+.book-preview strong {
+  margin-bottom: 5px;
+  font-size: 19px;
+}
+
+.book-preview span {
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+button {
+  min-height: 64px;
+  margin-top: 8px;
+  border: 0;
+  border-radius: 14px;
+  background: var(--leaf);
+  color: #071711;
+  font-size: 16px;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+}
+
+button:hover { filter: brightness(1.06); }
+button:disabled { cursor: wait; filter: grayscale(0.45); opacity: 0.62; }
+
+.status {
+  min-height: 22px;
+  margin: 2px 0 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.status.error { color: #ff9f9f; }
+.status.success { color: var(--leaf); }
+
+.notes {
+  padding: 34px 6px 0;
+}
+
+.notes h2 {
+  margin: 0 0 10px;
+  font-size: 17px;
+}
+
+.notes p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 15px;
+  line-height: 1.55;
+}
+
+.hidden { display: none; }
+
+@media (max-width: 560px) {
+  .privacy { display: none; }
+  .hero { padding-top: 56px; }
+  .transfer-card { padding: 20px; }
+}

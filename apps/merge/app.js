@@ -10,17 +10,17 @@
     BACK: "Escape",
   };
 
-  var GRID = 6;
-  var CELL = 76;
-  var GAP = 8;
+  var GRID = 8;
+  var CELL = 52;
+  var GAP = 6;
   var BOARD = GRID * CELL + (GRID - 1) * GAP;
   var OX = Math.round((600 - BOARD) / 2);
-  var OY = 86;
+  var OY = 80;
   var UNDOS = 5;
   var BEST_KEY = "merge-best";
   var RUN_KEY = "merge-run";
-  var SPAWN_FAST = 0.9;
-  var SPAWN_SLOW = 3.2;
+  var IDLE_FAST = 5;
+  var IDLE_SLOW = 8;
   var HINT_T = 3.2;
   var CREAM = "#FFFFFF";
   var MUTED = "#B0B3B8";
@@ -64,8 +64,9 @@
   var best = 0;
   var undos = UNDOS;
   var history = [];
+  var nextTile = 2;
   var hintT = 0;
-  var spawnT = 0;
+  var spawnT = IDLE_FAST;
   var audioCtx = null;
 
   function playKey(event) {
@@ -131,11 +132,13 @@
     if (typeof data.score !== "number" || data.score < 0) return null;
     if (typeof data.undos !== "number" || data.undos < 0 || data.undos > UNDOS) return null;
     if (typeof data.spawnT !== "number" || !isFinite(data.spawnT)) return null;
+    if (typeof data.nextTile !== "number" || data.nextTile < 2 || (data.nextTile & (data.nextTile - 1)) !== 0) return null;
     if (!Array.isArray(data.history)) return null;
     var i;
     for (i = 0; i < data.history.length; i += 1) {
       var step = data.history[i];
       if (!step || !validGrid(step.board) || typeof step.score !== "number") return null;
+      if (typeof step.nextTile !== "number" || typeof step.spawnT !== "number") return null;
     }
     return data;
   }
@@ -157,6 +160,7 @@
           board: board,
           score: score,
           undos: undos,
+          nextTile: nextTile,
           spawnT: spawnT,
           history: history,
         })
@@ -174,9 +178,15 @@
     board = cloneGrid(data.board);
     score = data.score;
     undos = data.undos;
+    nextTile = data.nextTile;
     spawnT = Math.max(0.2, data.spawnT);
     history = data.history.map(function (step) {
-      return { board: cloneGrid(step.board), score: step.score };
+      return {
+        board: cloneGrid(step.board),
+        score: step.score,
+        nextTile: step.nextTile,
+        spawnT: step.spawnT,
+      };
     });
     hintT = 0;
   }
@@ -273,27 +283,38 @@
     return out;
   }
 
-  function spawn() {
-    var open = empties();
-    if (!open.length) return;
-    var pick = open[(Math.random() * open.length) | 0];
-    board[pick.r][pick.c] = Math.random() < 0.82 ? 2 : 4;
+  function highestTile() {
+    var highest = 0;
+    var r;
+    var c;
+    for (r = 0; r < GRID; r += 1) {
+      for (c = 0; c < GRID; c += 1) {
+        if (board[r][c] > highest) highest = board[r][c];
+      }
+    }
+    return highest;
   }
 
-  function spawnN(n) {
-    var i;
-    for (i = 0; i < n; i += 1) spawn();
+  function chooseNextTile() {
+    var highest = highestTile();
+    var choices = [];
+    var value;
+    for (value = 2; value < highest; value *= 2) choices.push(value);
+    return choices.length ? choices[(Math.random() * choices.length) | 0] : 2;
   }
 
   function spawnInterval() {
-    var open = empties().length / (GRID * GRID);
-    var gap = SPAWN_SLOW - (SPAWN_SLOW - SPAWN_FAST) * open;
-    var scoreMul = Math.max(0.48, 1 / (1 + score / 4500));
-    return Math.max(0.5, gap * scoreMul);
+    var filled = 1 - empties().length / (GRID * GRID);
+    return IDLE_FAST + (IDLE_SLOW - IDLE_FAST) * filled;
   }
 
-  function idleSpawnCount() {
-    return empties().length >= 18 ? 2 : 1;
+  function spawn() {
+    var open = empties();
+    if (!open.length) return false;
+    var pick = open[(Math.random() * open.length) | 0];
+    board[pick.r][pick.c] = nextTile;
+    nextTile = chooseNextTile();
+    return true;
   }
 
   function ensureAudio() {
@@ -428,7 +449,12 @@
   }
 
   function pushHistory() {
-    history.push({ board: cloneGrid(board), score: score });
+    history.push({
+      board: cloneGrid(board),
+      score: score,
+      nextTile: nextTile,
+      spawnT: spawnT,
+    });
     if (history.length > 20) history.shift();
   }
 
@@ -439,7 +465,7 @@
     board = result.board;
     score += result.gained;
     if (result.gained) playMergeSfx(result.maxTile, result.merges);
-    spawnN(2);
+    spawn();
     spawnT = spawnInterval();
     writeSave();
     draw();
@@ -451,6 +477,8 @@
     var prev = history.pop();
     board = prev.board;
     score = prev.score;
+    nextTile = prev.nextTile;
+    spawnT = prev.spawnT;
     undos -= 1;
     writeSave();
     draw();
@@ -465,6 +493,7 @@
     score = 0;
     undos = UNDOS;
     history = [];
+    nextTile = 2;
     hintT = HINT_T;
     lastTs = 0;
     spawn();
@@ -550,9 +579,9 @@
   }
 
   function tileFont(v) {
-    if (v >= 10000) return "700 18px ui-monospace, monospace";
-    if (v >= 1000) return "700 22px ui-monospace, monospace";
-    return "700 28px ui-monospace, monospace";
+    if (v >= 10000) return "700 11px ui-monospace, monospace";
+    if (v >= 1000) return "700 14px ui-monospace, monospace";
+    return "700 18px ui-monospace, monospace";
   }
 
   function draw() {
@@ -582,10 +611,13 @@
     ctx.fillStyle = SURFACE;
     ctx.fillRect(16, 16, 568, 44);
     ctx.fillStyle = CREAM;
-    ctx.font = "700 18px ui-monospace, monospace";
+    ctx.font = "700 16px ui-monospace, monospace";
     ctx.textAlign = "left";
     ctx.textBaseline = "alphabetic";
     ctx.fillText("SCORE " + pad(score, 5), 28, 45);
+    ctx.textAlign = "center";
+    ctx.fillStyle = CREAM;
+    ctx.fillText("NEXT " + nextTile, 300, 45);
     ctx.textAlign = "right";
     ctx.fillStyle = AMBER;
     ctx.fillText("UNDO " + undos, 572, 45);
@@ -606,7 +638,7 @@
     if (hintT > 0) hintT -= dt;
     spawnT -= dt;
     if (spawnT <= 0) {
-      spawnN(idleSpawnCount());
+      spawn();
       spawnT = spawnInterval();
       writeSave();
       if (!canMove()) {

@@ -23,7 +23,8 @@ If a plugin skill conflicts with those pages, follow the official docs.
 
 - Fixed **600 x 600** viewport, `overflow: hidden`, no page scrolling
 - Additive display: page background `#000000` (transparent). Visible UI uses dark gray (`#1C1E21`), light high-contrast text
-- Input is **arrow keys + Enter** (Neural Band / captouch). No mouse, touch, or physical keyboard. Every control needs `.focusable` and a visible focus state
+- Input is **arrow keys + pinch/Enter** (Neural Band / captouch). No mouse, touch, or physical keyboard. Every control needs `.focusable` and a visible focus state
+- Continuous pinch-and-drag is **opt-in**, page-wide, via `body { touch-action: none }` in the **initial** CSS plus Pointer events. Off by default. Do not enable it unless the app needs analog sliders/maps/drawing/steering. It cannot be scoped to one element. Gyre menus died when this was on. Details: [docs/capabilities.md](docs/capabilities.md)
 - Required HTML: `meta name="mrbd-web-app-capable" content="yes"`, app-specific `description`, PNG favicon ≥52x52 (no SVG)
 - Glasses load **HTTPS only**. Host on **GitHub Pages**, not Vercel. Localhost is for desktop smoke tests only
 - Public URLs: `https://ggoonnzzaallo.github.io/meta_display/` (launcher) and `.../apps/<name>/` (keep the trailing slash)
@@ -41,6 +42,11 @@ Official build guide still lists camera and microphone as unsupported. On-device
 
 Request these only from a pinch/Enter on a `.focusable` control. Stop tracks on hide. Treat the official “unsupported” list as stale for camera/mic; do not refuse camera or mic features on that basis.
 
-## Not supported yet (official build guide)
+## Official “unsupported” vs toolkit v127 vs on-device
 
-Text input, offline, notifications, back navigation, continuous cursor. Camera and microphone are documented as unsupported but work on-device via `getUserMedia`.
+The build guide still lists camera, mic, text input, offline, back navigation, and continuous cursor as unsupported. Working list: [docs/capabilities.md](docs/capabilities.md).
+
+- Camera / mic / location: work on-device after a user gesture (`apps/ioprobe/`)
+- Pinch-and-drag, on-glasses text composer, Service Worker offline, Escape/back gesture: documented in [toolkit v127](https://github.com/facebookincubator/meta-wearables-webapp/commit/24d7bfc553d33d7fe849cd70d04544b1de555896). Verify on-device before depending on them
+- Notifications and a free-roaming cursor: still no. Drag is an opt-in pointer stream, not a mouse
+- If we add a service worker, register relative `apps/<name>/sw.js` (this repo is on GitHub Pages, not site root)

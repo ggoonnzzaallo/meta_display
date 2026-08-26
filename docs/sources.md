@@ -13,7 +13,12 @@ Always treat these as the source of truth for Meta Ray-Ban Display Web Apps. Re-
 ## AI toolkit
 
 - [facebookincubator/meta-wearables-webapp](https://github.com/facebookincubator/meta-wearables-webapp)
+- Toolkit **v127** (2026-08-06): [commit 24d7bfc](https://github.com/facebookincubator/meta-wearables-webapp/commit/24d7bfc553d33d7fe849cd70d04544b1de555896) — pinch-and-drag, on-glasses text composer, Service Worker offline, back gesture instead of an on-screen Back button
 - Wearables MCP: `https://mcp.developer.meta.com/wearables` — tool `search_webapps_docs` (no auth). Declared in [`.cursor/mcp.json`](../.cursor/mcp.json). If that server is missing from the agent tool list, use the docs above and say so.
+
+## Working capability list
+
+- [What the glasses can actually do](capabilities.md) — official vs toolkit v127 vs on-device. Read this before treating “unsupported” as a hard no.
 
 ## Backlog
 
@@ -21,7 +26,11 @@ Always treat these as the source of truth for Meta Ray-Ban Display Web Apps. Re-
 
 ## On-device I/O findings
 
-The [build guide](https://wearables.developer.meta.com/docs/develop/webapps/build/) still lists camera and microphone as unsupported. `apps/ioprobe/` on glasses (2026-08-14) got live streams from `getUserMedia` for both, plus `navigator.geolocation`. Request only from a user gesture.
+The [build guide](https://wearables.developer.meta.com/docs/develop/webapps/build/) still lists camera, microphone, text input, offline, back navigation, and continuous cursor as unsupported. In practice:
+
+- Camera, mic, location: `apps/ioprobe/` (2026-08-14) after a user gesture
+- Pinch-and-drag / composer / offline: documented in toolkit v127; verify on-device before shipping a dependency. See [capabilities.md](capabilities.md)
+- Gyre: `body { touch-action: none }` on the whole page ate menu pinches — do not opt into drag unless the app needs analog motion
 
 ## Chrome simulator
 

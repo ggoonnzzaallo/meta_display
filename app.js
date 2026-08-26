@@ -10,6 +10,7 @@
   };
 
   var APPS = [
+    { name: "Leaf", href: "apps/leaf/", version: "v1", updated: "2026-08-26T02:45:00Z", blurb: "Private EPUB reader. Pair, upload, and return to your page" },
     { name: "Still", href: "apps/still/", version: "v4", updated: "2026-08-21T02:45:00Z", blurb: "IMU reading HUD. Pitch-only walk-bounce" },
     { name: "Trace", href: "apps/trace/", version: "v12", updated: "2026-08-18T22:40:00Z", blurb: "Pinch-drag and stay on the outline" },
     { name: "Cadence", href: "apps/cadence/", version: "v8", updated: "2026-08-18T00:00:00Z", blurb: "Swipe matching arrows on the beat" },
@@ -17,7 +18,7 @@
     { name: "Gyre", href: "apps/gyre/", version: "v13", updated: "2026-08-18T16:15:00Z", blurb: "Seven sides is not the end. Heat, then 8 and 9" },
     { name: "Stack", href: "apps/stack/", version: "v4", updated: "2026-08-17T19:51:41Z", blurb: "Pinch to drop and keep the width" },
     { name: "Well", href: "apps/well/", version: "v5", updated: "2026-08-17T20:41:31Z", blurb: "Tiny Tetris. Pinch hard-drops" },
-    { name: "Merge", href: "apps/merge/", version: "v5", updated: "2026-08-18T15:40:00Z", blurb: "6×6 2048. Merges chime; bigger tiles sound fuller" },
+    { name: "Merge", href: "apps/merge/", version: "v6", updated: "2026-08-26T02:45:00Z", blurb: "8×8 merge puzzle. Previewed tiles, save, and chimes" },
     { name: "Putt", href: "apps/putt/", version: "v2", updated: "2026-08-17T19:51:41Z", blurb: "Card golf. Land on the cup" },
     { name: "Trio", href: "apps/trio/", version: "v1", updated: "2026-08-16T17:53:18Z", blurb: "Threes-style slider. One step per swipe" },
     { name: "Court", href: "apps/court/", version: "v2", updated: "2026-08-17T19:51:41Z", blurb: "Left or right decrees. Keep four meters" },

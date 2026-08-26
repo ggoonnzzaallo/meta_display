@@ -2,7 +2,7 @@
 
 Web Apps for Meta Ray-Ban Display glasses.
 
-Apps in this repo are standard HTML/CSS/JavaScript, sized for the 600×600 additive display and driven by Neural Band / captouch input (arrow keys + Enter).
+Apps in this repo are standard HTML/CSS/JavaScript, sized for the 600×600 additive display and driven by Neural Band / captouch input (arrow keys + pinch/Enter). Optional pinch-and-drag, the on-glasses text composer, and Service Worker offline are documented in [docs/capabilities.md](docs/capabilities.md).
 
 ## Canonical docs
 
@@ -15,7 +15,7 @@ Re-read these before building or changing a Web App:
 - [Build for display glasses](https://developers.meta.com/blog/build-for-display-glasses/)
 - [AI toolkit](https://github.com/facebookincubator/meta-wearables-webapp)
 
-Full link list: [docs/sources.md](docs/sources.md).
+Full link list: [docs/sources.md](docs/sources.md). Working capability list (official vs toolkit v127 vs on-device): [docs/capabilities.md](docs/capabilities.md).
 
 ## Local Setup
 
@@ -28,7 +28,7 @@ No package manager is required.
    ```
 
 2. Open [http://localhost:5173](http://localhost:5173) in Chrome. Situation is at `/apps/situation/`. Markets is at `/apps/markets/`. IO Probe is at `/apps/ioprobe/`.
-3. Use **arrow keys** to move focus and **Enter** to activate. That is the same input model the glasses send. Still is at `/apps/still/`.
+3. Use **arrow keys** to move focus and **Enter** to activate. That is the default glasses model (D-pad + pinch). Continuous pinch-and-drag is off unless an app opts in. Still is at `/apps/still/`; Leaf is at `/apps/leaf/`.
 4. Optional: install the [Display Simulator Chrome extension](https://chromewebstore.google.com/detail/jpjlmmodokemlepklkdbimceggpbjcll) and toggle it on the page to preview additive blending.
 
 ## Public hosting (GitHub Pages)
@@ -68,6 +68,7 @@ apps/still/       IMU-stabilized reading (walk-bounce cancel)
 scripts/fetch_feed.py     builds apps/situation/feed.json from MTS only
 scripts/fetch_markets.py  builds apps/markets/feed.json for Pages
 docs/sources.md   canonical documentation links
+docs/capabilities.md  official vs toolkit v127 vs on-device I/O
 .cursor/          Wearables MCP + project rules
 ```
 

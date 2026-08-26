@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Privately send an EPUB to the Leaf reader on Meta Ray-Ban Display.">
+  <title>Send a book to Leaf</title>
+  <link rel="icon" type="image/png" href="../favicon.png">
+  <link rel="stylesheet" href="styles.css?v=1">
+</head>
+<body>
+  <main>
+    <header>
+      <a href="../" class="brand" aria-label="Leaf reader home">
+        <span class="leaf-mark">L</span>
+        <span>LEAF</span>
+      </a>
+      <span class="privacy">PRIVATE EPUB TRANSFER</span>
+    </header>
+
+    <section class="hero">
+      <p class="eyebrow">SEND A BOOK TO YOUR GLASSES</p>
+      <h1>Your next page is waiting.</h1>
+      <p>Leaf converts the EPUB here on your device, strips scripts and remote content, and sends only the book’s text and chapter titles to your paired reader.</p>
+    </section>
+
+    <form id="upload-form" class="transfer-card">
+      <label for="pair-code">Pairing code from the glasses</label>
+      <input id="pair-code" name="pair-code" type="text" inputmode="text" autocomplete="one-time-code" maxlength="9" placeholder="ABCD EFGH" required>
+
+      <label for="epub-file">EPUB file</label>
+      <div class="file-row">
+        <input id="epub-file" name="epub-file" type="file" accept=".epub,application/epub+zip" required>
+        <span id="file-summary">Choose an .epub up to 20 MB</span>
+      </div>
+
+      <div id="book-preview" class="book-preview hidden">
+        <div class="book-glyph">Aa</div>
+        <div>
+          <strong id="preview-title">Book title</strong>
+          <span id="preview-author">Author</span>
+          <span id="preview-detail">0 chapters</span>
+        </div>
+      </div>
+
+      <button id="send-button" type="submit">SEND TO GLASSES</button>
+      <p id="status" class="status" role="status" aria-live="polite">The pairing code expires after ten minutes.</p>
+    </form>
+
+    <section class="notes">
+      <h2>What stays private</h2>
+      <p>The original EPUB never becomes a public file. Leaf stores sanitized chapter text in a private library associated with the random device key held by your glasses browser. DRM-protected EPUBs are not supported.</p>
+    </section>
+  </main>
+  <script src="fflate.min.js"></script>
+  <script src="app.js?v=1"></script>
+</body>
+</html>

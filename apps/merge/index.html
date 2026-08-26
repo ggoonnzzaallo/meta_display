@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=600, height=600, initial-scale=1.0, user-scalable=no">
-  <meta name="description" content="6x6 2048: swipe to slide large tiles and merge them. A long learning-curve puzzle.">
+  <meta name="description" content="8x8 merge puzzle with previewed, escalating tile spawns, saved runs, and idle pressure.">
   <meta name="mrbd-web-app-capable" content="yes">
-  <title>MERGE v5</title>
+  <title>MERGE v6</title>
   <link rel="icon" type="image/png" href="/meta_display/apps/merge/favicon.png">
   <link rel="icon" type="image/png" sizes="96x96" href="/meta_display/apps/merge/icon-96.png">
   <link rel="icon" type="image/png" sizes="128x128" href="/meta_display/apps/merge/icon-128.png">
@@ -13,15 +13,15 @@
   <link rel="apple-touch-icon" href="/meta_display/apps/merge/apple-touch-icon.png">
   <link rel="apple-touch-icon" sizes="180x180" href="/meta_display/apps/merge/apple-touch-icon.png">
   <link rel="manifest" href="/meta_display/apps/merge/manifest.webmanifest">
-  <link rel="stylesheet" href="styles.css?v=5">
+  <link rel="stylesheet" href="styles.css?v=6">
 </head>
 <body>
   <div id="app">
     <section id="home" class="screen" aria-label="MERGE title">
       <div class="title-block">
-        <p class="title-tag">6×6 · 2048</p>
+        <p class="title-tag">8×8 · BEYOND 2048</p>
         <h1>MERGE</h1>
-        <p class="best-readout">BUILD v5</p>
+        <p class="best-readout">BUILD v6</p>
         <p id="best-readout" class="best-readout">BEST 00000</p>
       </div>
       <div class="menu">
@@ -37,9 +37,9 @@
       </header>
       <div class="content">
         <ul class="facts">
-          <li>Swipe to slide. Matching numbers merge. Two new tiles appear after each move.</li>
-          <li>Idle tiles land faster when the board is empty, slower when it is packed. Higher scores speed that up.</li>
-          <li>Merges chime. Bigger tiles sound fuller. Pinch undoes. CONTINUE keeps the board.</li>
+          <li>Swipe to slide. Matching numbers merge. NEXT previews the tile that will land.</li>
+          <li>One tile lands after a move and after 5–8 idle seconds. It stays below your highest tile.</li>
+          <li>Merges chime. Pinch undoes. CONTINUE keeps the board and its next tile.</li>
         </ul>
         <button class="focusable" data-action="home">BACK</button>
       </div>
@@ -68,6 +68,6 @@
       </div>
     </section>
   </div>
-  <script src="app.js?v=5"></script>
+  <script src="app.js?v=6"></script>
 </body>
 </html>

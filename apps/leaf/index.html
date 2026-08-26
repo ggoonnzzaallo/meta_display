@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=600, height=600, initial-scale=1.0, user-scalable=no">
+  <meta name="description" content="A private EPUB reader for Meta Ray-Ban Display glasses.">
+  <meta name="mrbd-web-app-capable" content="yes">
+  <title>Leaf v1</title>
+  <link rel="icon" type="image/png" href="/meta_display/apps/leaf/favicon.png">
+  <link rel="icon" type="image/png" sizes="96x96" href="/meta_display/apps/leaf/icon-96.png">
+  <link rel="icon" type="image/png" sizes="128x128" href="/meta_display/apps/leaf/icon-128.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="/meta_display/apps/leaf/favicon.png">
+  <link rel="apple-touch-icon" href="/meta_display/apps/leaf/apple-touch-icon.png">
+  <link rel="manifest" href="/meta_display/apps/leaf/manifest.webmanifest">
+  <link rel="stylesheet" href="styles.css?v=1">
+</head>
+<body>
+  <div id="app">
+    <section id="home" class="screen" aria-label="Leaf library">
+      <header class="brand-header">
+        <div>
+          <p class="eyebrow">YOUR PRIVATE READER</p>
+          <h1>LEAF</h1>
+        </div>
+        <span class="build">v1</span>
+      </header>
+      <div id="library" class="library" aria-live="polite"></div>
+      <div class="home-actions">
+        <button class="focusable" data-action="pair">ADD EPUB</button>
+        <button class="focusable secondary" data-action="demo">DEMO</button>
+      </div>
+    </section>
+
+    <section id="pair" class="screen hidden" aria-label="Pair an EPUB">
+      <header class="compact-header">
+        <h1>ADD EPUB</h1>
+        <span id="pair-state">CONNECT</span>
+      </header>
+      <div class="pair-card">
+        <p class="pair-label">ON A PHONE OR COMPUTER</p>
+        <p class="upload-url">gonzalobuilds.com/meta_display/apps/leaf/upload/</p>
+        <p class="pair-label">ENTER THIS PRIVATE CODE</p>
+        <p id="pair-code" class="pair-code" aria-live="polite">•••• ••••</p>
+        <p id="pair-message" class="pair-message">Creating a ten-minute pairing code…</p>
+      </div>
+      <div class="pair-actions">
+        <button class="focusable" data-action="refresh-pair">NEW CODE</button>
+        <button class="focusable secondary" data-action="home">BACK</button>
+      </div>
+    </section>
+
+    <section id="toc" class="screen hidden" aria-label="Table of contents">
+      <header class="compact-header">
+        <h1>CONTENTS</h1>
+        <span id="toc-count">0</span>
+      </header>
+      <div id="toc-list" class="toc-list"></div>
+      <button class="focusable footer-button" data-action="resume">RESUME</button>
+    </section>
+
+    <section id="reader" class="reader-screen hidden" aria-label="Reader">
+      <div id="reader-hud" class="reader-hud">
+        <span id="chapter-label">CHAPTER</span>
+        <span id="progress-label">0%</span>
+      </div>
+      <div id="page-stage" class="page-stage">
+        <article id="page-old" class="page-layer page-old" aria-hidden="true"></article>
+        <article id="page-current" class="page-layer" tabindex="0" role="button" aria-label="Current page. Press Enter for reading controls."></article>
+        <div id="page-sweep" class="page-sweep" aria-hidden="true"></div>
+      </div>
+      <div id="reader-controls" class="reader-controls hidden" aria-label="Reading controls">
+        <button class="focusable" data-action="font-down">A−</button>
+        <button class="focusable" data-action="toc">CONTENTS</button>
+        <button class="focusable" data-action="font-up">A+</button>
+        <button class="focusable" data-action="home">LIBRARY</button>
+      </div>
+      <div id="measure" class="measure" aria-hidden="true"></div>
+    </section>
+
+    <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
+  </div>
+  <script src="app.js?v=1"></script>
+</body>
+</html>

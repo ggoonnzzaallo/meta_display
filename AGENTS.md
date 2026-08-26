@@ -19,7 +19,10 @@ Vanilla HTML/CSS/JS is the default. Keep the gzipped JS budget under 500KB and i
 
 - 600x600 viewport, no page scroll
 - Dark additive UI: `#000000` page background, dark-gray surfaces, light text
-- Arrow keys move focus; Enter activates. Mark controls `.focusable`
+- Arrow keys move focus; pinch/Enter activates. Mark controls `.focusable`
+- Continuous pinch-and-drag is **opt-in** and page-wide: `body { touch-action: none }` in the initial CSS, then Pointer events. Off by default. Do not enable it on D-pad games; Gyre menus broke when it was on. See [docs/capabilities.md](docs/capabilities.md)
+- Text: a focused text field + pinch may open the on-glasses composer. Read `input`/`change`, keep a D-pad fallback
+- Offline: Service Worker is toolkit-supported; if used, register a **relative** `sw.js` under `apps/<name>/`, not `/sw.js`
 - `meta name="mrbd-web-app-capable" content="yes"`
 - PNG favicon larger than 52x52. No SVG icons
 - On-device testing uses GitHub Pages HTTPS, not Vercel or localhost
@@ -28,4 +31,4 @@ Vanilla HTML/CSS/JS is the default. Keep the gzipped JS budget under 500KB and i
 - After adding `apps/<name>/`, also register it in the root `app.js` `APPS` list
 - Situation ingest: `scripts/fetch_feed.py` writes `apps/situation/feed.json` from Monitor the Situation only. Do not fetch third-party RSS from the glasses Web App.
 - Markets ingest: `scripts/fetch_markets.py` writes `apps/markets/feed.json` (Yahoo quotes for movers, Nasdaq earnings calendar, WSJ/CNBC/SA/BBC headlines). Do not scrape Finviz or fetch third-party feeds from the glasses Web App.
-- Camera, microphone, and location work on-device via `getUserMedia` / `geolocation` after a user gesture (`apps/ioprobe/`). Official docs still list camera and mic as unsupported; do not treat that as a hard block.
+- Camera, microphone, and location work on-device via `getUserMedia` / `geolocation` after a user gesture (`apps/ioprobe/`). Official docs still list camera, mic, text, offline, back, and continuous cursor as unsupported; do not treat camera/mic as a hard block. For drag, composer, and SW offline, follow [docs/capabilities.md](docs/capabilities.md) and verify on-device.

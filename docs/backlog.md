@@ -8,7 +8,7 @@ Wearables MCP (`search_webapps_docs`) is declared in [`.cursor/mcp.json`](../.cu
 - [x] **Gyre** — tap left/right to dodge closing hex walls (`apps/gyre/`)
 - [x] **Stack** — pinch to drop a sliding bar (`apps/stack/`)
 - [x] **Well** — tiny Tetris, pinch to hard-drop (`apps/well/`)
-- [x] **Merge** — 6×6 2048, swipe to slide (`apps/merge/`)
+- [x] **Merge** — 8×8 2048-style puzzle with previewed variable spawns (`apps/merge/`)
 - [x] **Putt** — card-golf puzzle, pick a stroke then swipe (`apps/putt/`)
 - [x] **Trio** — 4×4 Threes-style slider, one space per swipe (`apps/trio/`)
 - [x] **Court** — Reigns-style left/right decrees, four meters (`apps/court/`)
@@ -28,11 +28,12 @@ These apply to every app in this file.
 - Vanilla HTML/CSS/JS in `apps/<name>/` (`index.html`, `styles.css`, `app.js`, PNG favicon ≥52×52, `manifest.webmanifest`)
 - Fixed **600×600**, `overflow: hidden`, no page scroll
 - Additive UI: page background `#000000`; visible surfaces dark gray; light high-contrast text
-- Input: Neural Band / captouch → arrow keys + Enter. Every control is `.focusable` with a visible focus ring
+- Input: Neural Band / captouch → arrow keys + pinch/Enter. Every control is `.focusable` with a visible focus ring
+- Pinch-and-drag is opt-in and page-wide (`body { touch-action: none }` in initial CSS). Leave it off unless analog control is the mechanic. See [capabilities.md](capabilities.md)
 - Camera / mic / location only after a pinch on a `.focusable` control; stop tracks on hide
 - Gzipped JS under 500KB, first load under 3s, keep runtime memory in mind (official budget 128MB)
 - Host on GitHub Pages, not Vercel. Trailing slash on app URLs
-- Official docs still list camera, mic, text input, and offline as unsupported. Camera and mic work on-device (`apps/ioprobe/`, 2026-08-14). Text composer may work via a focused input; verify on-device before depending on it
+- Official docs still list camera, mic, text, offline, back, and continuous cursor as unsupported. Camera/mic work on-device (`apps/ioprobe/`). Composer, drag, and SW offline are toolkit v127 — verify on-device; keep a D-pad fallback for text
 
 ---
 
@@ -80,7 +81,7 @@ You meet people you should know and the name is gone. The glasses can see them. 
 
 - Capture: `getUserMedia({ video: true })` after pinch, `canvas.drawImage` → still, then `track.stop()`
 - Match: local face embedding vs your gallery (tiny model loaded lazily from a CDN, not shipped in the first 500KB). If on-device ML is too heavy or too slow, fall back to “capture + you pick from roster” rather than a cloud face API
-- Enrollment name/note: try a standard text field (on-glasses composer). If composer is dead on-device, ship a D-pad letter grid so the app still works
+- Enrollment name/note: standard `<input>` / `<textarea class="focusable">`, pinch to open the on-glasses composer (toolkit v127: focus **then** pinch; read `input`/`change`). Keep a D-pad letter grid if composer is missing on-device
 - Privacy copy on HOW: only people you enroll; frames are not uploaded
 
 ### Risks
@@ -88,7 +89,7 @@ You meet people you should know and the name is gone. The glasses can see them. 
 - We have proven a **live preview**, not yet canvas stills + ML on-device
 - Model size / 128MB memory / “instant” (target: result in ~2s, not 200ms)
 - Lighting, sunglasses, profile views — keep the top-3 confirm path
-- Composer / text input may still be blocked on glasses
+- Composer: toolkit v127 says focus-then-pinch opens it; still unproven in this repo — keep the letter-grid fallback
 
 ### Success
 
