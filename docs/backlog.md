@@ -8,7 +8,7 @@ Wearables MCP (`search_webapps_docs`) is declared in [`.cursor/mcp.json`](../.cu
 - [x] **Gyre** — tap left/right to dodge closing hex walls (`apps/gyre/`)
 - [x] **Stack** — pinch to drop a sliding bar (`apps/stack/`)
 - [x] **Well** — tiny Tetris, pinch to hard-drop (`apps/well/`)
-- [x] **Merge** — 8×8 2048-style puzzle with previewed variable spawns (`apps/merge/`)
+- [x] **Merge** — 6×6 2048-style puzzle with previewed variable spawns (`apps/merge/`)
 - [x] **Putt** — card-golf puzzle, pick a stroke then swipe (`apps/putt/`)
 - [x] **Trio** — 4×4 Threes-style slider, one space per swipe (`apps/trio/`)
 - [x] **Court** — Reigns-style left/right decrees, four meters (`apps/court/`)

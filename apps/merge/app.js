@@ -10,12 +10,12 @@
     BACK: "Escape",
   };
 
-  var GRID = 8;
-  var CELL = 52;
-  var GAP = 6;
+  var GRID = 6;
+  var CELL = 76;
+  var GAP = 8;
   var BOARD = GRID * CELL + (GRID - 1) * GAP;
   var OX = Math.round((600 - BOARD) / 2);
-  var OY = 80;
+  var OY = 86;
   var UNDOS = 5;
   var BEST_KEY = "merge-best";
   var RUN_KEY = "merge-run";
@@ -579,9 +579,9 @@
   }
 
   function tileFont(v) {
-    if (v >= 10000) return "700 11px ui-monospace, monospace";
-    if (v >= 1000) return "700 14px ui-monospace, monospace";
-    return "700 18px ui-monospace, monospace";
+    if (v >= 10000) return "700 18px ui-monospace, monospace";
+    if (v >= 1000) return "700 22px ui-monospace, monospace";
+    return "700 28px ui-monospace, monospace";
   }
 
   function draw() {

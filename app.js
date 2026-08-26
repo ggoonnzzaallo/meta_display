@@ -18,7 +18,7 @@
     { name: "Gyre", href: "apps/gyre/", version: "v13", updated: "2026-08-18T16:15:00Z", blurb: "Seven sides is not the end. Heat, then 8 and 9" },
     { name: "Stack", href: "apps/stack/", version: "v4", updated: "2026-08-17T19:51:41Z", blurb: "Pinch to drop and keep the width" },
     { name: "Well", href: "apps/well/", version: "v5", updated: "2026-08-17T20:41:31Z", blurb: "Tiny Tetris. Pinch hard-drops" },
-    { name: "Merge", href: "apps/merge/", version: "v6", updated: "2026-08-26T02:45:00Z", blurb: "8×8 merge puzzle. Previewed tiles, save, and chimes" },
+    { name: "Merge", href: "apps/merge/", version: "v7", updated: "2026-08-26T03:33:05Z", blurb: "6×6 merge puzzle. Previewed tiles, save, and chimes" },
     { name: "Putt", href: "apps/putt/", version: "v2", updated: "2026-08-17T19:51:41Z", blurb: "Card golf. Land on the cup" },
     { name: "Trio", href: "apps/trio/", version: "v1", updated: "2026-08-16T17:53:18Z", blurb: "Threes-style slider. One step per swipe" },
     { name: "Court", href: "apps/court/", version: "v2", updated: "2026-08-17T19:51:41Z", blurb: "Left or right decrees. Keep four meters" },
