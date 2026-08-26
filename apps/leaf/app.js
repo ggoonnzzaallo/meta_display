@@ -59,6 +59,8 @@
   var readerHud = document.getElementById("reader-hud");
   var readerControls = document.getElementById("reader-controls");
   var chapterLabel = document.getElementById("chapter-label");
+  var chapterProgressLabel = document.getElementById("chapter-progress-label");
+  var chapterProgressBar = document.getElementById("chapter-progress-bar");
   var progressLabel = document.getElementById("progress-label");
   var pairCode = document.getElementById("pair-code");
   var pairMessage = document.getElementById("pair-message");
@@ -379,12 +381,41 @@
     }
     var end = low;
     if (end < text.length) {
-      var paragraph = text.lastIndexOf("\n", end);
-      var word = text.lastIndexOf(" ", end);
-      var breakAt = Math.max(paragraph, word);
-      if (breakAt > start + Math.min(120, (end - start) * 0.45)) end = breakAt;
+      var sentence = sentenceBreakAtOrBefore(text, start, end);
+      if (sentence > start) {
+        end = sentence;
+      } else {
+        var paragraph = text.lastIndexOf("\n", end);
+        var word = text.lastIndexOf(" ", end);
+        var breakAt = Math.max(paragraph, word);
+        if (breakAt > start) end = breakAt;
+      }
     }
     return Math.max(start + 1, end);
+  }
+
+  function sentenceBreakAtOrBefore(text, start, limit) {
+    var minimum = start + Math.min(90, Math.floor((limit - start) * 0.35));
+    var best = -1;
+    var paragraph = text.lastIndexOf("\n", limit);
+    if (paragraph >= minimum) best = paragraph;
+    var slice = text.slice(start, limit);
+    if (window.Intl && Intl.Segmenter) {
+      var segments = new Intl.Segmenter(undefined, { granularity: "sentence" }).segment(slice);
+      Array.from(segments).forEach(function (segment) {
+        var candidate = start + segment.index + segment.segment.length;
+        var complete = /[.!?][\"'”’)]*\s*$/.test(segment.segment) || /\n\s*$/.test(segment.segment);
+        if (complete && candidate >= minimum && candidate <= limit) best = Math.max(best, candidate);
+      });
+      return best;
+    }
+    var pattern = /[.!?][\"'”’)]*(?=\s|$)/g;
+    var match;
+    while ((match = pattern.exec(slice))) {
+      var candidate = start + match.index + match[0].length;
+      if (candidate >= minimum) best = Math.max(best, candidate);
+    }
+    return best;
   }
 
   function buildStartsThrough(index, target) {
@@ -431,6 +462,12 @@
     return total ? Math.round((read / total) * 100) : 0;
   }
 
+  function chapterPercent() {
+    var length = chapterText(chapterIndex).length;
+    if (!length) return 100;
+    return Math.round((pageStart / length) * 100);
+  }
+
   function renderPage(animate, direction) {
     var nextText = currentPageText();
     if (animate) {
@@ -447,7 +484,10 @@
     pageCurrent.textContent = nextText || "End of chapter";
     var chapter = currentBook.chapters[chapterIndex];
     chapterLabel.textContent = String(chapter.title || "Chapter " + (chapterIndex + 1)).toUpperCase();
-    progressLabel.textContent = progressPercent() + "%";
+    var chapterPct = chapterPercent();
+    chapterProgressLabel.textContent = "CH " + (chapterIndex + 1) + "/" + currentBook.chapters.length + " · " + chapterPct + "%";
+    chapterProgressBar.style.width = chapterPct + "%";
+    progressLabel.textContent = "BOOK · " + progressPercent() + "%";
     saveProgress();
     showHud();
   }

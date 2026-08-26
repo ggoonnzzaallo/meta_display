@@ -264,8 +264,10 @@ button {
   top: 10px;
   left: 18px;
   right: 18px;
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: 16px 5px;
+  gap: 5px 14px;
   color: var(--leaf);
   font-size: 12px;
   font-weight: 800;
@@ -273,13 +275,48 @@ button {
   transition: opacity 500ms ease;
 }
 
+.chapter-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chapter-progress-label {
+  white-space: nowrap;
+}
+
+.progress-track {
+  grid-column: 1;
+  height: 5px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(120, 239, 189, 0.17);
+}
+
+.progress-track span {
+  display: block;
+  width: 0;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--leaf);
+  box-shadow: 0 0 8px var(--glow);
+  transition: width 180ms ease;
+}
+
+.book-progress-label {
+  grid-column: 2;
+  color: var(--muted);
+  line-height: 5px;
+  white-space: nowrap;
+}
+
 .reader-hud.dim {
-  opacity: 0.2;
+  opacity: 0.55;
 }
 
 .page-stage {
   position: absolute;
-  inset: 34px 18px 18px;
+  inset: 48px 18px 18px;
   overflow: hidden;
   border-radius: 16px;
   background: var(--surface);
@@ -385,7 +422,7 @@ button {
   left: -10000px;
   top: 0;
   width: 564px;
-  height: 548px;
+  height: 534px;
   overflow: hidden;
   padding: 28px 30px 30px;
   font-family: Georgia, "Times New Roman", serif;
