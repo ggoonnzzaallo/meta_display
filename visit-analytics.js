@@ -53,10 +53,5 @@
 
     document.head.appendChild(config);
   }
-
-  if (typeof window.requestIdleCallback === "function") {
-    window.requestIdleCallback(capturePageview, { timeout: 1000 });
-  } else {
-    window.setTimeout(capturePageview, 0);
-  }
+  capturePageview();
 })();
