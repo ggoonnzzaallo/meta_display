@@ -27,6 +27,7 @@ function runAnalytics(storage, startTime) {
   const requests = [];
   const windowListeners = {};
   const documentListeners = {};
+  const intervalCallbacks = [];
 
   class FakeDate extends Date {
     constructor(...args) {
@@ -50,10 +51,6 @@ function runAnalytics(storage, startTime) {
     platform: "Linux armv8l",
     language: "en-US",
     maxTouchPoints: 1,
-    sendBeacon(url, body) {
-      requests.push({ transport: "beacon", url, payload: JSON.parse(body) });
-      return true;
-    },
   };
   const document = {
     currentScript: {
@@ -108,6 +105,10 @@ function runAnalytics(storage, startTime) {
     addEventListener(name, callback) {
       windowListeners[name] = callback;
     },
+    setInterval(callback) {
+      intervalCallbacks.push(callback);
+      return intervalCallbacks.length;
+    },
     fetch(url, options) {
       requests.push({
         transport: "fetch",
@@ -126,6 +127,9 @@ function runAnalytics(storage, startTime) {
     requests,
     advance(milliseconds) {
       now += milliseconds;
+    },
+    checkpoint() {
+      intervalCallbacks.forEach((callback) => callback());
     },
     hide() {
       document.visibilityState = "hidden";
@@ -149,29 +153,15 @@ test("captures a launch as a UUIDv7 session with device context", () => {
   assert.equal(pageview.properties.$browser, "Chrome");
   assert.equal(pageview.properties.app_slug, "situation");
   assert.equal(pageview.properties.installation_id_persisted, true);
-});
-
-test("sends one session summary with duration and in-memory counters", () => {
-  const run = runAnalytics(createStorage(), 1_788_388_000_000);
-  run.context.metaDisplayAnalytics.increment("headline_open_count");
-  run.context.metaDisplayAnalytics.maximum("max_headline_count", 40);
-  run.advance(12_345);
+  assert.equal(pageview.properties.telemetry_version, 3);
+  assert.equal(pageview.properties.session_resumed, false);
+  assert.equal(pageview.properties.session_pageview_index, 1);
   run.hide();
   run.pagehide();
-
-  assert.equal(run.requests.length, 2);
-  const pageview = run.requests[0].payload;
-  const ended = run.requests[1].payload;
-  assert.equal(ended.event, "meta_display_session_ended");
-  assert.equal(ended.properties.$session_id, pageview.properties.$session_id);
-  assert.equal(ended.properties.session_duration_ms, 12_345);
-  assert.equal(ended.properties.session_duration_seconds, 12.3);
-  assert.equal(ended.properties.headline_open_count, 1);
-  assert.equal(ended.properties.max_headline_count, 40);
-  assert.equal(run.requests[1].transport, "beacon");
+  assert.equal(run.requests.length, 1);
 });
 
-test("keeps an anonymous installation ID but creates a new session per load", () => {
+test("keeps one session across adjacent pageviews", () => {
   const storage = createStorage();
   const first = runAnalytics(storage, 1_788_388_000_000);
   const second = runAnalytics(storage, 1_788_388_010_000);
@@ -179,8 +169,39 @@ test("keeps an anonymous installation ID but creates a new session per load", ()
   const secondPageview = second.requests[0].payload;
 
   assert.equal(firstPageview.distinct_id, secondPageview.distinct_id);
-  assert.notEqual(
+  assert.equal(
     firstPageview.properties.$session_id,
     secondPageview.properties.$session_id,
+  );
+  assert.equal(secondPageview.properties.session_resumed, true);
+  assert.equal(secondPageview.properties.session_pageview_index, 2);
+});
+
+test("finalizes a checkpointed session on the next launch after inactivity", () => {
+  const storage = createStorage();
+  const startedAt = 1_788_388_000_000;
+  const first = runAnalytics(storage, startedAt);
+  first.context.metaDisplayAnalytics.increment("headline_open_count");
+  first.context.metaDisplayAnalytics.maximum("max_headline_count", 40);
+  first.advance(12_345);
+  first.checkpoint();
+
+  const next = runAnalytics(storage, startedAt + 1_812_346);
+  assert.equal(next.requests.length, 2);
+
+  const firstPageview = first.requests[0].payload;
+  const ended = next.requests[0].payload;
+  const nextPageview = next.requests[1].payload;
+  assert.equal(ended.event, "meta_display_session_ended");
+  assert.equal(ended.properties.$session_id, firstPageview.properties.$session_id);
+  assert.equal(ended.properties.session_duration_ms, 12_345);
+  assert.equal(ended.properties.session_duration_seconds, 12.3);
+  assert.equal(ended.properties.session_pageview_count, 1);
+  assert.equal(ended.properties.headline_open_count, 1);
+  assert.equal(ended.properties.max_headline_count, 40);
+  assert.equal(ended.properties.session_finalized_late, true);
+  assert.notEqual(
+    nextPageview.properties.$session_id,
+    firstPageview.properties.$session_id,
   );
 });

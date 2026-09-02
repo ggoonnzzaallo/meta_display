@@ -2,16 +2,16 @@
 
 ## Summary
 
-Meta Display analytics now treats every web-app launch as a distinct PostHog session while retaining a stable, anonymous installation identifier for recognizing repeat use from the same browser storage. The implementation stays dependency-free and defers all analytics work until after the application has loaded.
+Meta Display analytics now groups nearby pageviews into a 30-minute inactivity session while retaining a stable, anonymous installation identifier for recognizing repeat use from the same browser storage. The implementation stays dependency-free and defers all network analytics work until after the application has loaded.
 
-Each launch sends one `$pageview`. A single best-effort `meta_display_session_ended` event is sent when the page becomes hidden or unloads, carrying measured duration and in-memory interaction totals. No heartbeat or per-interaction network requests were added.
+Each launch sends one `$pageview`. Session state is checkpointed locally every 30 seconds and after instrumented interactions, without network requests. Once a later launch occurs after at least 30 minutes of inactivity, it sends one `meta_display_session_ended` event for the prior session with its checkpointed duration and interaction totals. This does not depend on the glasses firing an unload event.
 
 ## Events
 
 | Event | Description | File |
 | --- | --- | --- |
-| `$pageview` | Records a launch with a fresh UUIDv7 `$session_id`, anonymous installation ID, app metadata, viewport, locale, timezone, and browser-provided device/OS context. | `visit-analytics.js` |
-| `meta_display_session_ended` | Records best-effort elapsed session duration and accumulated Situation interaction counters using the same `$session_id`. | `visit-analytics.js` |
+| `$pageview` | Records a launch, reusing its UUIDv7 `$session_id` while activity remains within the 30-minute session window. | `visit-analytics.js` |
+| `meta_display_session_ended` | Finalizes a prior inactive session on a later launch using its last local duration and interaction checkpoint. | `visit-analytics.js` |
 
 Situation currently accumulates refresh successes/errors, empty feeds, maximum headline count, headline opens, and detail navigations in memory for the end-of-session summary.
 
@@ -22,20 +22,20 @@ Situation currently accumulates refresh successes/errors, empty feeds, maximum h
 - [Verified Situation sessions](https://us.posthog.com/project/408524/insights/GJdO9Qm2)
 - [Average Situation session duration](https://us.posthog.com/project/408524/insights/tNdjOiHG)
 
-The telemetry-version-2 insights will remain empty until these changes are deployed and new launches occur.
+The telemetry-version-3 insights will remain empty until these changes are deployed and new launches occur.
 
 ## Validation
 
-- Three Node tests cover launch payloads, unique session IDs, installation persistence, duration, counters, and end-event deduplication.
+- Three Node tests cover launch payloads, adjacent-pageview session reuse, installation persistence, delayed finalization, duration, and counters.
 - JavaScript syntax checks pass.
-- The analytics helper is approximately 3.2 KB gzipped.
+- The analytics helper is approximately 3.8 KB gzipped.
 
 ## Next steps
 
 1. Deploy the updated shared analytics file and Situation app references.
-2. Launch Situation from the glasses several times and close or background it normally.
-3. Confirm that launch count and verified unique sessions rise together and that duration begins populating.
-4. Treat missing end events as abruptly terminated launches; pageviews still preserve the launch count.
+2. Use or reload Situation several times within 30 minutes and confirm those pageviews share one session.
+3. Launch it again after 30 minutes of inactivity to finalize the previous session and populate duration.
+4. Treat the most recent session as provisional until a later launch finalizes it.
 
 ### Agent skill
 

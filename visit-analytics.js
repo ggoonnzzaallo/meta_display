@@ -2,21 +2,24 @@
 (function () {
   "use strict";
 
-  var TELEMETRY_VERSION = 2;
+  var TELEMETRY_VERSION = 3;
   var INSTALLATION_KEY = "meta_display_analytics_installation_v1";
+  var SESSION_KEY_PREFIX = "meta_display_analytics_session_v1:";
+  var SESSION_TIMEOUT_MS = 30 * 60 * 1000;
+  var CHECKPOINT_INTERVAL_MS = 30 * 1000;
   var loader = document.currentScript;
   var appSlug = loader ? loader.getAttribute("data-posthog-app") : null;
   var appVersion = loader
     ? loader.getAttribute("data-posthog-app-version")
     : null;
-  var startedAt = Date.now();
-  var sessionId = uuidV7();
   var windowId = uuidV7();
   var installation = installationId();
-  var sessionMetrics = {};
+  var previousSession = null;
+  var session = prepareSession();
+  var sessionId = session.id;
+  var sessionMetrics = session.metrics;
   var endpoint = null;
   var projectKey = null;
-  var sessionEnded = false;
 
   function randomBytes(length) {
     var bytes = new Uint8Array(length);
@@ -78,6 +81,68 @@
       id = uuidV7();
     }
     return { id: id, persisted: persisted };
+  }
+
+  function sessionKey() {
+    return SESSION_KEY_PREFIX + (appSlug || "unknown");
+  }
+
+  function readSession() {
+    try {
+      var parsed = JSON.parse(window.localStorage.getItem(sessionKey()));
+      if (
+        parsed &&
+        typeof parsed.id === "string" &&
+        typeof parsed.startedAt === "number" &&
+        typeof parsed.lastSeenAt === "number"
+      ) {
+        parsed.metrics = parsed.metrics || {};
+        parsed.pageviewCount = Number(parsed.pageviewCount) || 0;
+        return parsed;
+      }
+    } catch (err) {
+      /* Missing or unavailable storage starts a new session. */
+    }
+    return null;
+  }
+
+  function writeSession(value) {
+    try {
+      window.localStorage.setItem(sessionKey(), JSON.stringify(value));
+      return true;
+    } catch (err) {
+      return false;
+    }
+  }
+
+  function prepareSession() {
+    var now = Date.now();
+    var saved = readSession();
+    var idleMs = saved ? Math.max(0, now - saved.lastSeenAt) : Infinity;
+    var current = saved;
+
+    if (!saved || idleMs > SESSION_TIMEOUT_MS) {
+      previousSession = saved;
+      current = {
+        id: uuidV7(),
+        startedAt: now,
+        lastSeenAt: now,
+        pageviewCount: 0,
+        metrics: {},
+        appSlug: appSlug,
+        appVersion: appVersion,
+        analyticsTest: isAnalyticsTest(),
+        telemetryVersion: TELEMETRY_VERSION,
+      };
+    }
+
+    current.lastSeenAt = now;
+    current.pageviewCount += 1;
+    current.appVersion = appVersion;
+    current.analyticsTest = isAnalyticsTest();
+    current.telemetryVersion = TELEMETRY_VERSION;
+    writeSession(current);
+    return current;
   }
 
   function trimmed(value, maxLength) {
@@ -210,7 +275,7 @@
     return out;
   }
 
-  function send(eventName, properties, unloading) {
+  function send(eventName, properties) {
     if (!endpoint || !projectKey) return false;
     var body = JSON.stringify({
       api_key: projectKey,
@@ -218,18 +283,6 @@
       distinct_id: installation.id,
       properties: eventProperties(properties || {}),
     });
-
-    if (
-      unloading &&
-      window.navigator &&
-      typeof window.navigator.sendBeacon === "function"
-    ) {
-      try {
-        if (window.navigator.sendBeacon(endpoint, body)) return true;
-      } catch (err) {
-        /* Fall back to fetch with keepalive. */
-      }
-    }
 
     if (typeof window.fetch !== "function") return false;
     window
@@ -250,43 +303,65 @@
     return typeof name === "string" && /^[a-z][a-z0-9_]{0,47}$/.test(name);
   }
 
+  function checkpoint() {
+    session.lastSeenAt = Date.now();
+    session.metrics = sessionMetrics;
+    writeSession(session);
+  }
+
   window.metaDisplayAnalytics = {
     increment: function (name, amount) {
       if (!validMetricName(name)) return;
       var increment = typeof amount === "number" ? amount : 1;
       sessionMetrics[name] = (Number(sessionMetrics[name]) || 0) + increment;
+      checkpoint();
     },
     maximum: function (name, value) {
       if (!validMetricName(name) || typeof value !== "number") return;
       sessionMetrics[name] = Math.max(Number(sessionMetrics[name]) || 0, value);
+      checkpoint();
     },
   };
 
-  function endSession(reason) {
-    if (sessionEnded) return;
-    sessionEnded = true;
-    var durationMs = Math.max(0, Date.now() - startedAt);
+  function sendPreviousSession() {
+    if (!previousSession) return;
+    var durationMs = Math.max(
+      0,
+      previousSession.lastSeenAt - previousSession.startedAt,
+    );
     var summary = {
-      session_end_reason: reason,
+      "$session_id": previousSession.id,
+      app_slug: previousSession.appSlug,
+      app_version: previousSession.appVersion,
+      analytics_test: previousSession.analyticsTest,
+      telemetry_version: previousSession.telemetryVersion,
+      session_end_reason: "next_launch_after_inactivity",
       session_duration_ms: durationMs,
       session_duration_seconds: Math.round(durationMs / 100) / 10,
+      session_pageview_count: previousSession.pageviewCount,
+      session_finalized_late: true,
+      session_started_at: new Date(previousSession.startedAt).toISOString(),
+      session_last_seen_at: new Date(previousSession.lastSeenAt).toISOString(),
     };
-    for (var key in sessionMetrics) summary[key] = sessionMetrics[key];
-    send("meta_display_session_ended", summary, true);
+    var metrics = previousSession.metrics || {};
+    for (var key in metrics) summary[key] = metrics[key];
+    send("meta_display_session_ended", summary);
   }
 
-  function bindSessionEnd() {
+  function bindCheckpoints() {
     window.addEventListener("pagehide", function () {
-      endSession("pagehide");
-    });
-    window.addEventListener("beforeunload", function () {
-      endSession("beforeunload");
+      checkpoint();
     });
     document.addEventListener("visibilitychange", function () {
       if (document.visibilityState === "hidden") {
-        endSession("visibility_hidden");
+        checkpoint();
       }
     });
+    if (typeof window.setInterval === "function") {
+      window.setInterval(function () {
+        if (document.visibilityState !== "hidden") checkpoint();
+      }, CHECKPOINT_INTERVAL_MS);
+    }
   }
 
   function start() {
@@ -299,10 +374,12 @@
       var host = window.POSTHOG_HOST;
       if (!projectKey || !host) return;
       endpoint = host.replace(/\/$/, "") + "/i/v0/e/";
+      sendPreviousSession();
       send("$pageview", {
-        session_started_at: new Date(startedAt).toISOString(),
+        session_started_at: new Date(session.startedAt).toISOString(),
+        session_resumed: session.pageviewCount > 1,
+        session_pageview_index: session.pageviewCount,
       });
-      bindSessionEnd();
     };
 
     config.onerror = function () {
@@ -312,5 +389,6 @@
     document.head.appendChild(config);
   }
 
+  bindCheckpoints();
   start();
 })();
