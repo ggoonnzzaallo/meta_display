@@ -60,6 +60,20 @@
   var audioCtx = null;
   var flipSfxAt = 0;
 
+  function countAnalytics(name, amount) {
+    var analytics = window.metaDisplayAnalytics;
+    if (analytics && typeof analytics.increment === "function") {
+      analytics.increment(name, amount);
+    }
+  }
+
+  function maxAnalytics(name, value) {
+    var analytics = window.metaDisplayAnalytics;
+    if (analytics && typeof analytics.maximum === "function") {
+      analytics.maximum(name, value);
+    }
+  }
+
   function ensureAudio() {
     var AC = window.AudioContext || window.webkitAudioContext;
     if (!AC) return null;
@@ -278,10 +292,13 @@
     var items = mtsOnly(Array.isArray(feed && feed.items) ? feed.items : []);
     state.signalError = items.length === 0;
     if (!items.length) {
+      countAnalytics("feed_empty_count");
       persist();
       updateChrome();
       return;
     }
+    countAnalytics("feed_refresh_success_count");
+    maxAnalytics("max_headline_count", items.length);
     applyList(items, {
       stickToTop: !state.visible.length,
       focusHome: !state.visible.length,
@@ -298,6 +315,7 @@
         ingest(data);
       })
       .catch(function () {
+        countAnalytics("feed_refresh_error_count");
         state.signalError = true;
         updateChrome();
       });
@@ -388,6 +406,7 @@
 
   function openDetail(item) {
     if (!item) return;
+    countAnalytics("headline_open_count");
     ensureAudio();
     renderDetail(item);
     navigateTo("detail");
@@ -400,6 +419,7 @@
     if (idx < 0) idx = 0;
     var next = (idx + delta + state.visible.length) % state.visible.length;
     if (next === idx) return;
+    countAnalytics("detail_navigation_count");
     renderDetail(state.visible[next]);
     focusDetailBack();
     playFlipSfx();

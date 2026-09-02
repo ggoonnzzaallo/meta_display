@@ -46,8 +46,9 @@
   <script>
     window.addEventListener("load", function () {
       var analytics = document.createElement("script");
-      analytics.src = "../../visit-analytics.js?v=1";
+      analytics.src = "../../visit-analytics.js?v=2";
       analytics.setAttribute("data-posthog-app", "situation");
+      analytics.setAttribute("data-posthog-app-version", "2");
       document.head.appendChild(analytics);
     }, { once: true });
   </script>
