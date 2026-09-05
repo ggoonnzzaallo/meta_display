@@ -82,5 +82,14 @@
     </section>
   </div>
   <script src="app.js?v=30"></script>
+  <script>
+    window.addEventListener("load", function () {
+      var analytics = document.createElement("script");
+      analytics.src = "../../visit-analytics.js?v=3";
+      analytics.setAttribute("data-posthog-app", "lockon");
+      analytics.setAttribute("data-posthog-app-version", "30");
+      document.head.appendChild(analytics);
+    }, { once: true });
+  </script>
 </body>
 </html>
